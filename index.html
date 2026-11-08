@@ -430,13 +430,36 @@
           </div>
         </div>
 
-        <!-- Rebalancing Period Selector (Yearly, Quarterly, Monthly, None) -->
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="block text-xs font-semibold text-slate-700">
-              리밸런싱 주기 설정 <span class="text-slate-400 font-normal">(클릭 시 즉시 반영)</span>
+        <!-- Backtest Data Frequency Mode Selector (Daily REAL_DAILY_DB vs Monthly MARKET_DB) -->
+        <div class="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200/90 space-y-2">
+          <div class="flex items-center justify-between gap-1 flex-wrap">
+            <label class="block text-xs font-extrabold text-indigo-950">
+              📊 백테스트 데이터 &amp; 스위칭 연산 기준
             </label>
-            <span id="activeRebalModeText" class="text-[11px] font-bold text-blue-600">현재: 분기별 (3개월)</span>
+            <span id="activeDataFreqBadge" class="px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-bold num-font">
+              현재: 일별 데이터 (REAL_DAILY_DB)
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 bg-indigo-100/80 p-1 rounded-xl" id="dataFreqGroup">
+            <button type="button" data-freq="daily" class="data-freq-btn py-2 px-2 rounded-lg text-xs font-extrabold transition bg-white text-indigo-700 shadow-sm">
+              📅 일별 데이터 (일간 스위칭)
+            </button>
+            <button type="button" data-freq="monthly" class="data-freq-btn py-2 px-2 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900">
+              🗓️ 월별 데이터 (월간 스위칭)
+            </button>
+          </div>
+          <p id="dataFreqModeDesc" class="text-[11px] text-indigo-900/90 leading-relaxed">
+            • <strong>일별 데이터 기준:</strong> <code class="font-bold">REAL_DAILY_DB</code>(일일 종가)를 사용해 코어(80%) 및 알파 레버리지(20%)의 이평선 돌파·이탈과 MDD 분할매매를 <strong>매일(일별) 체크·스위칭</strong>합니다.
+          </p>
+        </div>
+
+        <!-- Rebalancing Period Selector (Yearly, Quarterly, Monthly, None - Executed on Month-Start First Business Day) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between flex-wrap gap-1">
+            <label class="block text-xs font-semibold text-slate-700">
+              리밸런싱 주기 설정 <span class="text-blue-600 font-bold">(월초 첫 영업일 기준)</span>
+            </label>
+            <span id="activeRebalModeText" class="text-[11px] font-bold text-blue-600">현재: 분기별 (3개월 · 월초)</span>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-100 p-1 rounded-xl" id="rebalanceGroup">
             <button type="button" data-rebal="monthly" class="rebal-btn py-2 px-2 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900">
@@ -1994,6 +2017,15 @@
     }
 
     function formatEventDateInMonth(ym, mIdx, startIdx, endIdx, position = 'end', d = null, D = 21) {
+      if (position === 'start') {
+        if (REAL_DAILY_DB && REAL_DAILY_DB.dates) {
+          const entries = getRealDailyMonthEntries(ym);
+          if (entries.length > 0) return entries[0].dStr;
+        }
+        const { minDay, maxDay } = getEffectiveMonthDayBounds(ym, mIdx, startIdx, endIdx);
+        const firstBiz = clampToBusinessDay(ym, minDay, minDay, maxDay);
+        return `${ym}-${String(firstBiz).padStart(2, '0')}`;
+      }
       if (typeof d === 'number' && D > 1 && REAL_DAILY_DB && REAL_DAILY_DB.dates) {
         const entries = getRealDailyMonthEntries(ym);
         if (entries.length >= 2) {
@@ -2299,6 +2331,7 @@
       divMode: 'reinvest',   // 'reinvest' | 'exclude'
       startDate: '2011-10',  // Default: 2011-10 (SCHD 상장월 기준)
       endDate: MARKET_DB.months[MARKET_DB.months.length - 1],
+      dataFreqMode: 'daily', // 'daily' (REAL_DAILY_DB 일별 데이터) | 'monthly' (MARKET_DB 월별 데이터)
       rebalance: 'quarterly', // 'yearly' | 'quarterly' | 'monthly' | 'none'
       benchmark: 'QQQ',
       scaleType: 'linear',   // 'linear' | 'logarithmic'
@@ -2860,8 +2893,9 @@
 
     // Daily 18-Tranche Pure Magic Split Simulation Engine
     function simulateDailyMagicSplitSeries(items, startIdx, endIdx, initialKrw, monthlyKrw, rebalanceMode, fxMode, fxSpreadPct, divMode, mddLevOptions) {
+      const effFreq = (mddLevOptions && mddLevOptions.dataFreqMode) || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
       const paths = getDailyMarketPaths();
-      const D = paths.daysPerMonth;
+      const D = effFreq === 'monthly' ? 1 : paths.daysPerMonth;
       const totalW = items.reduce((s, x) => s + (parseFloat(x.weight) || 0), 0);
       const weights = items.map(x => totalW > 0 ? (parseFloat(x.weight) || 0) / totalW : 1 / items.length);
       const spreadRate = (parseFloat(fxSpreadPct) || 0) / 100;
@@ -3113,8 +3147,7 @@
           baseHoldingsKrw += monthlyKrw * (1 - spreadRate * 0.5);
         }
 
-        const { isIncompleteEndMonth: magicIncompleteEnd } = getEffectiveMonthDayBounds(ym, m, startIdx, endIdx);
-        if (!magicIncompleteEnd && (rebalanceMode === 'monthly' || (rebalanceMode === 'quarterly' && stepIndex % 3 === 0) || (rebalanceMode === 'yearly' && stepIndex % 12 === 0))) {
+        if (rebalanceMode === 'monthly' || (rebalanceMode === 'quarterly' && stepIndex % 3 === 0) || (rebalanceMode === 'yearly' && stepIndex % 12 === 0)) {
           rebalanceCount++;
         }
 
@@ -3282,9 +3315,32 @@
     }
 
     // Helper: Compute Real Daily N-Trading-Day SMA at month mIdx for an ETF (20D, 50D, 60D, 120D, 200D)
-    function computeEtfSmaAtMonth(etfId, mIdx, maDays) {
+    function computeMonthlyOnlySmaAtMonth(etfId, mIdx, maDays) {
       const etf = MARKET_DB.etfs[etfId];
       if (!etf || !etf.prices) return 0;
+      const code = parseInt(maDays, 10) || 60;
+      const effWinDays = code === 2005 ? 20 : ((code === 2026 || code === 2060) ? 60 : code);
+      // Convert trading days to monthly window (20d -> 2m, 50~60d -> 3m, 120d -> 6m, 200d -> 10m)
+      const wMonths = effWinDays <= 25 ? 2 : Math.max(2, Math.round(effWinDays / 20));
+      const endM = Math.max(0, Math.min(etf.prices.length - 1, mIdx));
+      const startM = Math.max(0, endM - wMonths + 1);
+      let sum = 0;
+      let cnt = 0;
+      for (let k = startM; k <= endM; k++) {
+        sum += etf.prices[k];
+        cnt++;
+      }
+      const smaVal = cnt > 0 ? (sum / cnt) : etf.prices[endM];
+      return +smaVal.toFixed(etf.currency === 'USD' ? 2 : 0);
+    }
+
+    function computeEtfSmaAtMonth(etfId, mIdx, maDays, forceFreqMode = null) {
+      const etf = MARKET_DB.etfs[etfId];
+      if (!etf || !etf.prices) return 0;
+      const effFreq = forceFreqMode || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
+      if (effFreq === 'monthly') {
+        return computeMonthlyOnlySmaAtMonth(etfId, mIdx, maDays);
+      }
       const code = parseInt(maDays, 10) || 60;
       const effWin = code === 2005 ? 20 : ((code === 2026 || code === 2060) ? 60 : code);
       const fd = getFullDailyTimeline();
@@ -3295,6 +3351,56 @@
         return +smaVal.toFixed(etf.currency === 'USD' ? 2 : 0);
       }
       return etf.prices[mIdx];
+    }
+
+    function checkMonthlyMaTargetState(etfId, mIdx, code, curInRisk, buyBufFrac, sellBufFrac) {
+      const etf = MARKET_DB.etfs[etfId];
+      if (!etf || !etf.prices || code <= 0) return true;
+      const p = etf.prices[Math.max(0, Math.min(etf.prices.length - 1, mIdx))];
+      if (code === 2005) {
+        const sma200 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 200);
+        const sma200Prev = computeMonthlyOnlySmaAtMonth(etfId, Math.max(0, mIdx - 1), 200);
+        const sma50 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 50);
+        const ema20 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 20);
+        const c1 = p >= sma200;
+        const c2 = sma200 >= sma200Prev * 0.9995;
+        const c3 = (ema20 >= sma50) && (sma50 >= sma200);
+        if (!curInRisk) {
+          return (c1 && c2 && c3 && p >= ema20 * (1.0 + buyBufFrac));
+        } else {
+          return !(p < ema20 * (1.0 - sellBufFrac) || !c1);
+        }
+      } else if (code === 2026) {
+        const sma200 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 200);
+        const sma200Prev = computeMonthlyOnlySmaAtMonth(etfId, Math.max(0, mIdx - 1), 200);
+        const sma60 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 60);
+        const sma50 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 50);
+        const ema20 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 20);
+        const isBull = (p >= sma200) && (sma200 >= sma200Prev * 0.9995) && (ema20 >= sma50) && (sma50 >= sma200);
+        if (!curInRisk) {
+          return (isBull && p >= sma60 * (1.0 + buyBufFrac)) || (!isBull && p >= ema20 * (1.0 + buyBufFrac + 0.008));
+        } else {
+          return isBull ? !(p < sma60 * (1.0 - sellBufFrac)) : !(p < ema20 * (1.0 - sellBufFrac * 0.5));
+        }
+      } else if (code === 2060) {
+        const sma200 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 200);
+        const sma200Prev = computeMonthlyOnlySmaAtMonth(etfId, Math.max(0, mIdx - 1), 200);
+        const sma60 = computeMonthlyOnlySmaAtMonth(etfId, mIdx, 60);
+        const c1 = p >= sma200;
+        const c2 = sma200 >= sma200Prev * 0.9995;
+        if (!curInRisk) {
+          return (c1 && c2 && p >= sma60 * (1.0 + buyBufFrac));
+        } else {
+          return !(p < sma60 * (1.0 - sellBufFrac) || !c1);
+        }
+      } else {
+        const sma = computeMonthlyOnlySmaAtMonth(etfId, mIdx, code);
+        if (!curInRisk) {
+          return p >= sma * (1.0 + buyBufFrac);
+        } else {
+          return !(p < sma * (1.0 - sellBufFrac));
+        }
+      }
     }
 
     // Helper: Check if an ETF satisfies its Moving Average / Multi-MA Regime filter at month index mIdx (Real Daily Close vs Real Daily SMA)
@@ -3419,17 +3525,39 @@
     // Effective monthly return of a core asset considering its individual Moving Average filter (60d / 120d / 200d)
     // Signal is evaluated at the end of month (m - 1) to determine whether month m holds the asset or safe short-term cash/bond (SGOV / SHY / KR_KODEX_SHORT / etc.)
     function getAssetMonthlyReturnWithMa(item, m, fxMode, divMode, wsOverride = null) {
-      const fd = getFullDailyTimeline();
+      const effFreq = (wsOverride && wsOverride.dataFreqMode) || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
       const etf = MARKET_DB.etfs[item.id];
       const maDays = parseInt(item.maPeriod, 10) || 0;
       const safeEtf = resolveCoreSafeCashEtf(etf, wsOverride);
-      const fdItem = fd.etfs[item.id];
-      const fdSafe = fd.etfs[safeEtf.id];
       const wsSpec = getStWhipsawFilterSpec(wsOverride);
       const buyBuf = wsSpec.buyBufPct / 100.0;
       const sellBuf = wsSpec.sellBufPct / 100.0;
       const buyConf = wsSpec.buyConfirmDays || 1;
       const sellConf = wsSpec.sellConfirmDays || 1;
+
+      if (effFreq === 'monthly') {
+        let inRisk = true;
+        if (maDays > 0) {
+          const walkStartM = Math.max(0, m - 18);
+          inRisk = checkMonthlyMaTargetState(item.id, walkStartM, maDays, true, buyBuf, sellBuf);
+          for (let k = walkStartM + 1; k <= Math.max(0, m - 1); k++) {
+            inRisk = checkMonthlyMaTargetState(item.id, k, maDays, inRisk, buyBuf, sellBuf);
+          }
+        }
+        const activeEtf = inRisk ? etf : safeEtf;
+        const prevFx = MARKET_DB.usdkrw[Math.max(0, m - 1)];
+        const currFx = MARKET_DB.usdkrw[m];
+        const fxRatioM = (fxMode === 'real_fx' && prevFx > 0) ? (currFx / prevFx) : 1.0;
+        const rKrw = getSingleEtfMonthlyRetKrw(activeEtf, m, fxMode, divMode, fxRatioM);
+        const rNative = (etf.market === 'US' && fxMode === 'real_fx')
+          ? ((1.0 + rKrw) / Math.max(1e-6, fxRatioM) - 1.0)
+          : rKrw;
+        return { r: rNative, rKrw, heldSafe: !inRisk, safeTicker: safeEtf.ticker, safeEtf };
+      }
+
+      const fd = getFullDailyTimeline();
+      const fdItem = fd.etfs[item.id];
+      const fdSafe = fd.etfs[safeEtf.id];
 
       const gStart = fd.monthStartG[m];
       const gEnd = fd.monthEndG[m];
@@ -3494,6 +3622,7 @@
     }
 
     function initCoreAssetTrackers(items, startIdx, coreShare, weights, wsOverride = null) {
+      const effFreq = (wsOverride && wsOverride.dataFreqMode) || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
       const fd = getFullDailyTimeline();
       const wsSpec = getStWhipsawFilterSpec(wsOverride);
       const buyBuf = wsSpec.buyBufPct / 100.0;
@@ -3503,9 +3632,14 @@
         const etf = MARKET_DB.etfs[item.id];
         const maPeriod = parseInt(item.maPeriod, 10) || 0;
         const fdItem = fd.etfs[item.id];
-        const inRisk = maPeriod > 0 ? checkDailyMaTargetState(fdItem, gInit, maPeriod, true, buyBuf, sellBuf) : true;
+        const inRisk = maPeriod > 0
+          ? (effFreq === 'monthly'
+              ? checkMonthlyMaTargetState(item.id, startIdx, maPeriod, true, buyBuf, sellBuf)
+              : checkDailyMaTargetState(fdItem, gInit, maPeriod, true, buyBuf, sellBuf))
+          : true;
         const safeEtfObj = resolveCoreSafeCashEtf(etf, wsOverride);
         const safeTicker = safeEtfObj ? safeEtfObj.ticker : (etf.market === 'US' ? 'SHY' : 'KODEX단기채');
+        const initP = effFreq === 'monthly' ? etf.prices[startIdx] : fdItem.prices[gInit];
         return {
           idx: i,
           id: item.id,
@@ -3521,8 +3655,8 @@
           fdSafe: fd.etfs[safeEtfObj.id],
           inRisk,
           streak: 0,
-          entryPrice: fdItem.prices[gInit],
-          peakPrice: fdItem.prices[gInit],
+          entryPrice: initP,
+          peakPrice: initP,
           buyCount: maPeriod > 0 && inRisk ? 1 : 0,
           defendCount: maPeriod > 0 && !inRisk ? 1 : 0,
           winCount: 0,
@@ -3532,7 +3666,7 @@
     }
 
     function checkAndRecordCoreMaSwitches(coreTrackers, items, m, ym, currFx, getAssetSlotKrwFn, getCoreTotalKrwFn, getLevTotalKrwFn, spreadRate, levTradeEvents, startIdx = 0, endIdx = MARKET_DB.months.length - 1, wsOverride = null) {
-      const fd = getFullDailyTimeline();
+      const effFreq = (wsOverride && wsOverride.dataFreqMode) || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
       let monthCoreSwitchFeeKrw = 0;
       let monthCoreSwitchCount = 0;
       const ws = getStWhipsawFilterSpec(wsOverride);
@@ -3540,6 +3674,80 @@
       const sellBuf = ws.sellBufPct / 100.0;
       const buyConf = ws.buyConfirmDays || 1;
       const sellConf = ws.sellConfirmDays || 1;
+
+      if (effFreq === 'monthly') {
+        const eventDateStr = formatEventDateInMonth(ym, m, startIdx, endIdx, 'end');
+        for (let i = 0; i < coreTrackers.length; i++) {
+          const trk = coreTrackers[i];
+          const etfObj = MARKET_DB.etfs[trk.id];
+          const curP = etfObj.prices[m];
+          if (curP > trk.peakPrice) trk.peakPrice = curP;
+          const assetDdPct = trk.peakPrice > 0 ? -((trk.peakPrice - curP) / trk.peakPrice) * 100.0 : 0.0;
+
+          if (trk.maPeriod > 0) {
+            const nextInRisk = checkMonthlyMaTargetState(trk.id, m, trk.maPeriod, trk.inRisk, buyBuf, sellBuf);
+            if (nextInRisk !== trk.inRisk) {
+              monthCoreSwitchCount++;
+              const slotKrw = Math.max(0, getAssetSlotKrwFn(i, m));
+              const fee = slotKrw * (spreadRate * 0.45);
+              monthCoreSwitchFeeKrw += fee;
+
+              const gainPct = (!nextInRisk && trk.entryPrice > 0)
+                ? ((curP / trk.entryPrice) - 1.0) * 100.0
+                : null;
+              if (!nextInRisk && gainPct !== null && gainPct > 0) trk.winCount++;
+              if (nextInRisk) {
+                trk.entryPrice = curP;
+                trk.buyCount++;
+              } else {
+                trk.defendCount++;
+              }
+
+              const coreNow = getCoreTotalKrwFn(m);
+              const levRes = getLevTotalKrwFn(m);
+              const activeLevKrw = (typeof levRes === 'object' && levRes !== null) ? levRes.activeLevKrw : levRes;
+              const totalSleeveKrw = (typeof levRes === 'object' && levRes !== null) ? levRes.totalSleeveKrw : levRes;
+              const totNow = Math.max(1, coreNow + totalSleeveKrw);
+
+              const mSma = computeMonthlyOnlySmaAtMonth(trk.id, m, trk.maPeriod);
+              const dispPct = mSma > 0 ? ((curP / mSma) - 1.0) * 100.0 : 0.0;
+              const fmtSma = trk.currency === 'USD' ? `$${mSma.toFixed(2)}` : `₩${Math.round(mSma).toLocaleString('ko-KR')}`;
+
+              levTradeEvents.push({
+                ym: eventDateStr,
+                sleeveType: 'CORE',
+                subType: 'CORE_MA',
+                assetId: trk.id,
+                assetTicker: trk.ticker,
+                assetName: trk.name,
+                trancheNum: `코어 ${trk.ticker} (${formatStMaLabel(trk.maPeriod)}·월간)`,
+                action: nextInRisk ? 'CORE_BUY' : 'CORE_DEFEND',
+                refPrice: curP,
+                refCurrency: trk.currency,
+                refDdPct: assetDdPct,
+                prevL: trk.inRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
+                newL: nextInRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
+                baseSharePct: (coreNow / totNow) * 100.0,
+                levSharePct: (activeLevKrw / totNow) * 100.0,
+                levPrice: curP,
+                levCurrency: trk.currency,
+                fxRate: currFx,
+                tradeKrw: nextInRisk ? slotKrw : -slotKrw,
+                profitPct: gainPct,
+                portValKrw: totNow,
+                detailNote: nextInRisk
+                  ? `📈 [코어·${trk.ticker}·월별데이터] 월간 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct >= 0 ? '+' : ''}${dispPct.toFixed(2)}%) 상향돌파 → ${trk.safeTicker} 매도 후 ${trk.ticker} 재진입`
+                  : `🛡️ [코어·${trk.ticker}·월별데이터] 월간 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct.toFixed(2)}%) 하향이탈 → ${trk.ticker} 매도 후 ${trk.safeTicker} 현금대피`
+              });
+
+              trk.inRisk = nextInRisk;
+            }
+          }
+        }
+        return { monthCoreSwitchFeeKrw, monthCoreSwitchCount };
+      }
+
+      const fd = getFullDailyTimeline();
       const gStart = fd.monthStartG[m];
       const gEnd = fd.monthEndG[m];
 
@@ -3629,6 +3837,7 @@
     }
 
     function simulateStrat1MaSwitchSeries(items, startIdx, endIdx, initialKrw, monthlyKrw, rebalanceMode, fxMode, fxSpreadPct, divMode, mddLevOptions) {
+      const effFreq = (mddLevOptions && mddLevOptions.dataFreqMode) || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
       const fd = getFullDailyTimeline();
       const totalW = items.reduce((s, x) => s + (parseFloat(x.weight) || 0), 0);
       const weights = items.map(x => totalW > 0 ? (parseFloat(x.weight) || 0) / totalW : 1 / items.length);
@@ -3641,9 +3850,6 @@
       const sleeveShare = Math.max(0.05, Math.min(0.50, (parseFloat(mddLevOptions.sleevePct) || 20) / 100));
       const coreShare = 1.0 - sleeveShare;
 
-      // ★ Cross-Market Timezone Alignment:
-      // When Reference is a US ETF (closes at 05:00 KST next morning) and Leveraged asset is a KRX ETF (trades 09:00~15:30 KST),
-      // the KRX session reflecting US day g's close and where execution occurs is KRX session g + 1.
       const crossMarketLag = (refEtf.market === 'US' && levEtf.market !== 'US') ? 1 : 0;
 
       const startFx = MARKET_DB.usdkrw[startIdx];
@@ -3671,8 +3877,10 @@
       const fdLev = fd.etfs[levEtf.id];
       const fdSafeLev = fd.etfs[safeEtf.id];
 
-      let refPeakPrice = fdRef.prices[gInit];
-      let prevInLev = checkDailyMaTargetState(fdRef, gInit, maPeriod, true, levBuyBuf, levSellBuf);
+      let refPeakPrice = effFreq === 'monthly' ? refEtf.prices[startIdx] : fdRef.prices[gInit];
+      let prevInLev = effFreq === 'monthly'
+        ? checkMonthlyMaTargetState(refEtf.id, startIdx, maPeriod, true, levBuyBuf, levSellBuf)
+        : checkDailyMaTargetState(fdRef, gInit, maPeriod, true, levBuyBuf, levSellBuf);
       let levStreak = 0;
 
       const coreTrackers = initCoreAssetTrackers(items, startIdx, coreShare, weights, mddLevOptions);
@@ -3699,7 +3907,7 @@
       let coreSwitchCount = 0;
       let pingPongWinCount = 0;
       const gInitLev = (crossMarketLag && fd.isRealDailyMonth[startIdx]) ? Math.min(fd.totalDays - 1, gInit + 1) : gInit;
-      let entryLevPrice = fdLev.prices[gInitLev];
+      let entryLevPrice = effFreq === 'monthly' ? levEtf.prices[startIdx] : fdLev.prices[gInitLev];
 
       function getAssetSlotKrwAtFx(i, fxNow) {
         const etf = MARKET_DB.etfs[items[i].id];
@@ -3747,220 +3955,26 @@
         const gStart = fd.monthStartG[m];
         const gEnd = fd.monthEndG[m];
         const isRealM = fd.isRealDailyMonth[m] === 1;
+        const prevFx = fxMode === 'real_fx' ? MARKET_DB.usdkrw[m - 1] : startFx;
+        const currFx = fxMode === 'real_fx' ? (effFreq === 'daily' ? fd.usdkrw[gEnd] : MARKET_DB.usdkrw[m]) : startFx;
+        const fxMonthRatio = prevFx > 0 ? (currFx / prevFx) : 1.0;
 
-        // ★ Step day-by-day through every trading day g in month m
-        for (let g = gStart; g <= gEnd; g++) {
-          const dayDate = fd.dates[g];
-          const dFx = fxMode === 'real_fx' ? fd.usdkrw[g] : startFx;
-          const dFxRatio = fxMode === 'real_fx' ? fd.fxRatio[g] : 1.0;
-
-          // 1. Compound daily returns for each Core Asset based on its active state coming into day g
-          for (let i = 0; i < coreTrackers.length; i++) {
-            const trk = coreTrackers[i];
-            const slotEtf = MARKET_DB.etfs[trk.id];
-            const activeEtf = trk.inRisk ? slotEtf : trk.safeEtfObj;
-            const fdActive = trk.inRisk ? trk.fdItem : trk.fdSafe;
-            const dRetSlot = getDailyRetInSlotUnit(slotEtf, activeEtf, fdActive, g, dFxRatio);
-            coreHoldingsNative[i] *= (1.0 + dRetSlot);
-          }
-
-          // Check if day g is a KRX-only trailing session after the latest US close (e.g. 2026-10-30 when US latest close is 2026-10-29)
-          const isPostUsCloseDay = isRealM && refEtf.market === 'US' && REAL_DAILY_DB && dayDate > REAL_DAILY_DB.usLatestCloseDate;
-          const gLev = (crossMarketLag && isRealM) ? Math.min(fd.totalDays - 1, g + 1) : g;
-
-          // 2. Compound daily return for Tactical Sleeve (20%) based on prevInLev coming into day g
-          if (!(crossMarketLag && isPostUsCloseDay)) {
-            const tacActiveEtf = prevInLev ? levEtf : safeEtf;
-            const fdTacActive = prevInLev ? fdLev : fdSafeLev;
-            const gTac = prevInLev ? gLev : g;
-            const dFxRatioTac = (fxMode === 'real_fx' && gTac < fd.totalDays) ? fd.fxRatio[gTac] : dFxRatio;
-            const dSleeveRetKrw = getDailyRetKrw(tacActiveEtf, fdTacActive, gTac, dFxRatioTac);
-            sleeveValKrw *= (1.0 + dSleeveRetKrw);
-          }
-
-          // Update Reference Asset daily peak & drawdown
-          const refP = fdRef.prices[g];
-          if (refP > refPeakPrice) refPeakPrice = refP;
-          const refDdPctPos = refPeakPrice > 0 ? ((refPeakPrice - refP) / refPeakPrice) * 100.0 : 0.0;
-
-          // 3. Evaluate Tactical Leverage daily MA & Whipsaw confirmation at close of day g
-          let nextInLev = prevInLev;
-          if (!isPostUsCloseDay) {
-            const rawWantLev = checkDailyMaTargetState(fdRef, g, maPeriod, prevInLev, levBuyBuf, levSellBuf);
-            if (rawWantLev !== prevInLev) {
-              levStreak++;
-              const reqConf = rawWantLev ? levBuyConf : levSellConf;
-              if (levStreak >= reqConf) {
-                nextInLev = rawWantLev;
-                levStreak = 0;
-              }
-            } else {
-              levStreak = 0;
-            }
-          }
-
-          // 4. Evaluate each Core Asset's daily MA & Whipsaw confirmation at close of day g
-          for (let i = 0; i < coreTrackers.length; i++) {
-            const trk = coreTrackers[i];
-            const curP = trk.fdItem.prices[g];
-            if (curP > trk.peakPrice) trk.peakPrice = curP;
-            const assetDdPct = trk.peakPrice > 0 ? -((trk.peakPrice - curP) / trk.peakPrice) * 100.0 : 0.0;
-
-            if (trk.maPeriod > 0) {
-              const rawWantRisk = checkDailyMaTargetState(trk.fdItem, g, trk.maPeriod, trk.inRisk, coreBuyBuf, coreSellBuf);
-              let nextInRisk = trk.inRisk;
-              if (rawWantRisk !== trk.inRisk) {
-                trk.streak++;
-                const reqCoreConf = rawWantRisk ? coreBuyConf : coreSellConf;
-                if (trk.streak >= reqCoreConf) {
-                  nextInRisk = rawWantRisk;
-                  trk.streak = 0;
-                }
-              } else {
-                trk.streak = 0;
-              }
-
-              if (nextInRisk !== trk.inRisk) {
-                coreSwitchCount++;
-                const slotKrw = Math.max(0, getAssetSlotKrwAtFx(i, dFx));
-                const fee = slotKrw * (spreadRate * 0.45);
-                cumulativeFxCostKrw += fee;
-                if (trk.market === 'US') {
-                  coreHoldingsNative[i] = Math.max(0, coreHoldingsNative[i] - (fee / dFx));
-                } else {
-                  coreHoldingsNative[i] = Math.max(0, coreHoldingsNative[i] - fee);
-                }
-
-                const gainPct = (!nextInRisk && trk.entryPrice > 0)
-                  ? ((curP / trk.entryPrice) - 1.0) * 100.0
-                  : null;
-                if (!nextInRisk && gainPct !== null && gainPct > 0) trk.winCount++;
-                if (nextInRisk) {
-                  trk.entryPrice = curP;
-                  trk.buyCount++;
-                } else {
-                  trk.defendCount++;
-                }
-
-                const coreNow = getCoreKrwAtFx(dFx);
-                const totNow = Math.max(1, coreNow + sleeveValKrw);
-                const effWin = (trk.maPeriod === 2005) ? 20 : ((trk.maPeriod === 2026 || trk.maPeriod === 2060) ? 60 : trk.maPeriod);
-                const daySma = getDailySmaAtG(trk.fdItem, g, effWin);
-                const dispPct = daySma > 0 ? ((curP / daySma) - 1.0) * 100.0 : 0.0;
-                const fmtSma = trk.currency === 'USD' ? `$${daySma.toFixed(2)}` : `₩${Math.round(daySma).toLocaleString('ko-KR')}`;
-
-                levTradeEvents.push({
-                  ym: dayDate,
-                  sleeveType: 'CORE',
-                  subType: 'CORE_MA',
-                  assetId: trk.id,
-                  assetTicker: trk.ticker,
-                  assetName: trk.name,
-                  trancheNum: `코어 ${trk.ticker} (${formatStMaLabel(trk.maPeriod)})`,
-                  action: nextInRisk ? 'CORE_BUY' : 'CORE_DEFEND',
-                  refPrice: +curP.toFixed(trk.currency === 'USD' ? 2 : 0),
-                  refCurrency: trk.currency,
-                  refDdPct: assetDdPct,
-                  prevL: trk.inRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
-                  newL: nextInRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
-                  baseSharePct: (coreNow / totNow) * 100.0,
-                  levSharePct: nextInLev ? (sleeveValKrw / totNow) * 100.0 : 0.0,
-                  levPrice: +curP.toFixed(trk.currency === 'USD' ? 2 : 0),
-                  levCurrency: trk.currency,
-                  fxRate: +dFx.toFixed(2),
-                  tradeKrw: nextInRisk ? slotKrw : -slotKrw,
-                  profitPct: gainPct,
-                  portValKrw: totNow,
-                  detailNote: nextInRisk
-                    ? `📈 [코어${Math.round(coreShare * 100)}%·${trk.ticker}] 일일 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct >= 0 ? '+' : ''}${dispPct.toFixed(2)}%) 상향돌파 [${wsSpec.shortBadge}] → ${trk.safeTicker} 매도 후 ${trk.ticker} 재진입`
-                    : `🛡️ [코어${Math.round(coreShare * 100)}%·${trk.ticker}] 일일 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct.toFixed(2)}%) 하향이탈 [${wsSpec.shortBadge}] → ${trk.ticker} 매도 후 ${trk.safeTicker} 현금대피`
-                });
-
-                trk.inRisk = nextInRisk;
-              }
-            }
-          }
-
-          // 5. Record Tactical Leverage switch event if nextInLev changed on day g
-          if (nextInLev !== prevInLev) {
-            levSwitchCount++;
-            const fee = sleeveValKrw * (spreadRate * 0.5);
-            sleeveValKrw -= fee;
-            cumulativeFxCostKrw += fee;
-            const coreNow = getCoreKrwAtFx(dFx);
-            const totNow = Math.max(1, coreNow + sleeveValKrw);
-            const curLevP = fdLev.prices[gLev];
-            const levGainPct = prevInLev && entryLevPrice > 0 ? ((curLevP / entryLevPrice) - 1.0) * 100.0 : null;
-            if (!nextInLev && levGainPct !== null && levGainPct > 0) pingPongWinCount++;
-            if (nextInLev) entryLevPrice = curLevP;
-
-            const effLevWin = (maPeriod === 2005) ? 20 : ((maPeriod === 2026 || maPeriod === 2060) ? 60 : maPeriod);
-            const refDaySma = getDailySmaAtG(fdRef, g, effLevWin);
-            const refDispPct = refDaySma > 0 ? ((refP / refDaySma) - 1.0) * 100.0 : 0.0;
-            const fmtRefSma = refEtf.currency === 'USD' ? `$${refDaySma.toFixed(2)}` : `₩${Math.round(refDaySma).toLocaleString('ko-KR')}`;
-            const krxExecNote = (crossMarketLag && isRealM && gLev !== g) ? ` (한·미 시차 반영 KRX ${fd.dates[gLev]} 시세 체결)` : '';
-
-            levTradeEvents.push({
-              ym: dayDate,
-              sleeveType: 'LEV',
-              subType: 'LEV_MA',
-              assetId: levEtf.id,
-              assetTicker: levEtf.ticker,
-              assetName: levEtf.name,
-              trancheNum: `전술 ${levEtf.ticker} (${formatStMaLabel(maPeriod)})`,
-              action: nextInLev ? 'BUY' : 'CLEAR',
-              refPrice: +refP.toFixed(refEtf.currency === 'USD' ? 2 : 0),
-              refCurrency: refEtf.currency,
-              refDdPct: -refDdPctPos,
-              prevL: prevInLev ? `${levEtf.ticker} ${(sleeveShare * 100).toFixed(0)}%` : `${safeEtf.ticker}(현금 0%)`,
-              newL: nextInLev ? `${levEtf.ticker} ${(sleeveShare * 100).toFixed(0)}%` : `${safeEtf.ticker}(현금 0%)`,
-              baseSharePct: (coreNow / totNow) * 100.0,
-              levSharePct: nextInLev ? (sleeveValKrw / totNow) * 100.0 : 0.0,
-              levPrice: +curLevP.toFixed(levEtf.currency === 'USD' ? 2 : 0),
-              levCurrency: levEtf.currency,
-              fxRate: +dFx.toFixed(2),
-              tradeKrw: nextInLev ? sleeveValKrw : -sleeveValKrw,
-              profitPct: levGainPct,
-              portValKrw: totNow,
-              detailNote: nextInLev
-                ? `⚡ [전술${Math.round(sleeveShare * 100)}%·${levEtf.ticker}] Ref(${refEtf.ticker}) 일일 ${formatStMaLabel(maPeriod)}(${fmtRefSma}, 이격 ${refDispPct >= 0 ? '+' : ''}${refDispPct.toFixed(2)}%) 상향돌파 [${wsSpec.shortBadge}] → ${safeEtf.ticker} 매도 후 ${levEtf.ticker} 매수${krxExecNote}`
-                : `🛡️ [전술${Math.round(sleeveShare * 100)}%·${levEtf.ticker}] Ref(${refEtf.ticker}) 일일 ${formatStMaLabel(maPeriod)}(${fmtRefSma}, 이격 ${refDispPct.toFixed(2)}%) 하향이탈 [${wsSpec.shortBadge}] → ${levEtf.ticker} 전량매도 후 ${safeEtf.ticker} 현금대피${krxExecNote}`
-            });
-            prevInLev = nextInLev;
-          }
-        }
-
-        const currFx = fxMode === 'real_fx' ? fd.usdkrw[gEnd] : startFx;
-        const valBeforeContrib = getCoreKrwAtFx(currFx) + sleeveValKrw;
-        const monthRet = prevTotalKrw > 0 ? (valBeforeContrib / prevTotalKrw) - 1.0 : 0.0;
-        monthlyReturnsKrw.push(monthRet);
-
-        if (monthlyKrw > 0) {
-          currentInvestedKrw += monthlyKrw;
-          const addCore = monthlyKrw * coreShare;
-          sleeveValKrw += monthlyKrw * sleeveShare * (1 - spreadRate * 0.5);
-          for (let i = 0; i < items.length; i++) {
-            const etf = MARKET_DB.etfs[items[i].id];
-            const aKrw = addCore * weights[i];
-            coreHoldingsNative[i] += etf.market === 'US' ? (aKrw * (1 - spreadRate)) / currFx : aKrw;
-          }
-        }
-
-        const { isIncompleteEndMonth: strat1IncompleteEnd } = getEffectiveMonthDayBounds(ym, m, startIdx, endIdx);
-        const shouldRebal = !strat1IncompleteEnd && (
+        // ★ 1. 월초(첫 영업일) 정기 리밸런싱 실행 (Month-Start Rebalancing)
+        const shouldRebal = (
           rebalanceMode === 'monthly'
           || (rebalanceMode === 'quarterly' && stepIndex % 3 === 0)
           || (rebalanceMode === 'yearly' && stepIndex % 12 === 0)
         );
 
         if (shouldRebal) {
-          const rawTotNow = getCoreKrwAtFx(currFx) + sleeveValKrw;
+          const rebalFx = fxMode === 'real_fx' ? (effFreq === 'daily' ? fd.usdkrw[gStart] : prevFx) : startFx;
+          const rawTotNow = getCoreKrwAtFx(rebalFx) + sleeveValKrw;
           let turnoverKrw = Math.abs(sleeveValKrw - rawTotNow * sleeveShare);
           const soldTickers = [];
           const boughtTickers = [];
 
           for (let i = 0; i < items.length; i++) {
-            const curSlotKrw = getAssetSlotKrwAtFx(i, currFx);
+            const curSlotKrw = getAssetSlotKrwAtFx(i, rebalFx);
             const tKrw = (rawTotNow * coreShare) * weights[i];
             const diff = tKrw - curSlotKrw;
             turnoverKrw += Math.abs(diff) * 0.5;
@@ -3977,7 +3991,7 @@
           for (let i = 0; i < items.length; i++) {
             const tKrw = targetCoreTotal * weights[i];
             const etf = MARKET_DB.etfs[items[i].id];
-            coreHoldingsNative[i] = etf.market === 'US' ? tKrw / currFx : tKrw;
+            coreHoldingsNative[i] = etf.market === 'US' ? tKrw / rebalFx : tKrw;
             coreTrackers[i].rebalCount++;
           }
           sleeveValKrw = totNow * sleeveShare;
@@ -3989,34 +4003,367 @@
             ? `${soldTickers.join('·')} 차익실현 → ${boughtTickers.join('·')} 저가매수`
             : `코어 ${(coreShare * 100).toFixed(0)}% : 전술 ${(sleeveShare * 100).toFixed(0)}% 비중 정렬`;
 
-          const endRefP = fdRef.prices[gEnd];
-          const endRefDdPos = refPeakPrice > 0 ? ((refPeakPrice - endRefP) / refPeakPrice) * 100.0 : 0.0;
-          const gEndLev = (crossMarketLag && isRealM) ? Math.min(fd.totalDays - 1, gEnd + 1) : gEnd;
+          const startRefP = effFreq === 'daily' ? fdRef.prices[gStart] : refEtf.prices[m - 1];
+          const startRefDdPos = refPeakPrice > 0 ? ((refPeakPrice - startRefP) / refPeakPrice) * 100.0 : 0.0;
+          const startLevP = effFreq === 'daily' ? fdLev.prices[gStart] : levEtf.prices[m - 1];
+          const rebalDateStr = formatEventDateInMonth(ym, m, startIdx, endIdx, 'start');
 
           levTradeEvents.push({
-            ym: fd.dates[gEnd],
+            ym: rebalDateStr,
             sleeveType: 'REBAL',
             subType: 'CORE_REBAL',
             assetId: 'PORTFOLIO',
             assetTicker: items.map(x => MARKET_DB.etfs[x.id].ticker).join('·'),
-            assetName: `${rebalTypeStr} 정기 리밸런싱`,
-            trancheNum: `${rebalTypeStr} 리밸런싱`,
+            assetName: `${rebalTypeStr} 월초 정기 리밸런싱`,
+            trancheNum: `${rebalTypeStr} 리밸런싱(월초)`,
             action: 'REBAL',
-            refPrice: +endRefP.toFixed(refEtf.currency === 'USD' ? 2 : 0),
+            refPrice: +startRefP.toFixed(refEtf.currency === 'USD' ? 2 : 0),
             refCurrency: refEtf.currency,
-            refDdPct: -endRefDdPos,
+            refDdPct: -startRefDdPos,
             prevL: `리밸런싱 전`,
             newL: `코어 ${(coreShare * 100).toFixed(0)}% 균등정렬`,
             baseSharePct: coreShare * 100,
             levSharePct: prevInLev ? sleeveShare * 100 : 0,
-            levPrice: +fdLev.prices[gEndLev].toFixed(levEtf.currency === 'USD' ? 2 : 0),
+            levPrice: +startLevP.toFixed(levEtf.currency === 'USD' ? 2 : 0),
             levCurrency: levEtf.currency,
-            fxRate: +currFx.toFixed(2),
+            fxRate: +rebalFx.toFixed(2),
             tradeKrw: turnoverKrw,
             profitPct: null,
             portValKrw: totNow,
-            detailNote: `⚖️ [${Math.round(coreShare * 100)}% 코어 ${rebalTypeStr} 리밸런싱] ${flowSummary}`
+            detailNote: `⚖️ [${Math.round(coreShare * 100)}% 코어 ${rebalTypeStr} 월초 리밸런싱 (${rebalDateStr})] ${flowSummary}`
           });
+        }
+
+        // ★ 2. 선택된 데이터 기준(일별 REAL_DAILY_DB vs 월별 MARKET_DB)에 따른 수익률 복리 계산 및 코어·레버리지 스위칭
+        if (effFreq === 'monthly') {
+          // ── [월별 데이터 기준 (MARKET_DB)] ──
+          for (let i = 0; i < coreTrackers.length; i++) {
+            const trk = coreTrackers[i];
+            const slotEtf = MARKET_DB.etfs[trk.id];
+            const activeEtf = trk.inRisk ? slotEtf : trk.safeEtfObj;
+            const rKrw = getSingleEtfMonthlyRetKrw(activeEtf, m, fxMode, divMode, fxMonthRatio);
+            const rSlot = (slotEtf.market === 'US' && fxMode === 'real_fx')
+              ? ((1.0 + rKrw) / Math.max(1e-6, fxMonthRatio) - 1.0)
+              : rKrw;
+            coreHoldingsNative[i] *= (1.0 + rSlot);
+          }
+
+          const tacActiveEtf = prevInLev ? levEtf : safeEtf;
+          const mSleeveRetKrw = getSingleEtfMonthlyRetKrw(tacActiveEtf, m, fxMode, divMode, fxMonthRatio);
+          sleeveValKrw *= (1.0 + mSleeveRetKrw);
+
+          const refP = refEtf.prices[m];
+          if (refP > refPeakPrice) refPeakPrice = refP;
+          const refDdPctPos = refPeakPrice > 0 ? ((refPeakPrice - refP) / refPeakPrice) * 100.0 : 0.0;
+          const mEventDate = formatEventDateInMonth(ym, m, startIdx, endIdx, 'end');
+
+          const nextInLev = checkMonthlyMaTargetState(refEtf.id, m, maPeriod, prevInLev, levBuyBuf, levSellBuf);
+
+          // 월별 코어(80%) 이평선 스위칭 체크
+          for (let i = 0; i < coreTrackers.length; i++) {
+            const trk = coreTrackers[i];
+            const slotEtf = MARKET_DB.etfs[trk.id];
+            const curP = slotEtf.prices[m];
+            if (curP > trk.peakPrice) trk.peakPrice = curP;
+            const assetDdPct = trk.peakPrice > 0 ? -((trk.peakPrice - curP) / trk.peakPrice) * 100.0 : 0.0;
+
+            if (trk.maPeriod > 0) {
+              const nextInRisk = checkMonthlyMaTargetState(trk.id, m, trk.maPeriod, trk.inRisk, coreBuyBuf, coreSellBuf);
+              if (nextInRisk !== trk.inRisk) {
+                coreSwitchCount++;
+                const slotKrw = Math.max(0, getAssetSlotKrwAtFx(i, currFx));
+                const fee = slotKrw * (spreadRate * 0.45);
+                cumulativeFxCostKrw += fee;
+                if (trk.market === 'US') {
+                  coreHoldingsNative[i] = Math.max(0, coreHoldingsNative[i] - (fee / currFx));
+                } else {
+                  coreHoldingsNative[i] = Math.max(0, coreHoldingsNative[i] - fee);
+                }
+
+                const gainPct = (!nextInRisk && trk.entryPrice > 0)
+                  ? ((curP / trk.entryPrice) - 1.0) * 100.0
+                  : null;
+                if (!nextInRisk && gainPct !== null && gainPct > 0) trk.winCount++;
+                if (nextInRisk) {
+                  trk.entryPrice = curP;
+                  trk.buyCount++;
+                } else {
+                  trk.defendCount++;
+                }
+
+                const coreNow = getCoreKrwAtFx(currFx);
+                const totNow = Math.max(1, coreNow + sleeveValKrw);
+                const mSma = computeMonthlyOnlySmaAtMonth(trk.id, m, trk.maPeriod);
+                const dispPct = mSma > 0 ? ((curP / mSma) - 1.0) * 100.0 : 0.0;
+                const fmtSma = trk.currency === 'USD' ? `$${mSma.toFixed(2)}` : `₩${Math.round(mSma).toLocaleString('ko-KR')}`;
+
+                levTradeEvents.push({
+                  ym: mEventDate,
+                  sleeveType: 'CORE',
+                  subType: 'CORE_MA',
+                  assetId: trk.id,
+                  assetTicker: trk.ticker,
+                  assetName: trk.name,
+                  trancheNum: `코어 ${trk.ticker} (${formatStMaLabel(trk.maPeriod)}·월간)`,
+                  action: nextInRisk ? 'CORE_BUY' : 'CORE_DEFEND',
+                  refPrice: +curP.toFixed(trk.currency === 'USD' ? 2 : 0),
+                  refCurrency: trk.currency,
+                  refDdPct: assetDdPct,
+                  prevL: trk.inRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
+                  newL: nextInRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
+                  baseSharePct: (coreNow / totNow) * 100.0,
+                  levSharePct: nextInLev ? (sleeveValKrw / totNow) * 100.0 : 0.0,
+                  levPrice: +curP.toFixed(trk.currency === 'USD' ? 2 : 0),
+                  levCurrency: trk.currency,
+                  fxRate: +currFx.toFixed(2),
+                  tradeKrw: nextInRisk ? slotKrw : -slotKrw,
+                  profitPct: gainPct,
+                  portValKrw: totNow,
+                  detailNote: nextInRisk
+                    ? `📈 [코어${Math.round(coreShare * 100)}%·${trk.ticker}·월별데이터] 월간 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct >= 0 ? '+' : ''}${dispPct.toFixed(2)}%) 상향돌파 → ${trk.safeTicker} 매도 후 ${trk.ticker} 재진입`
+                    : `🛡️ [코어${Math.round(coreShare * 100)}%·${trk.ticker}·월별데이터] 월간 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct.toFixed(2)}%) 하향이탈 → ${trk.ticker} 매도 후 ${trk.safeTicker} 현금대피`
+                });
+
+                trk.inRisk = nextInRisk;
+              }
+            }
+          }
+
+          // 월별 전술 레버리지(20%) 이평선 스위칭 체크
+          if (nextInLev !== prevInLev) {
+            levSwitchCount++;
+            const fee = sleeveValKrw * (spreadRate * 0.5);
+            sleeveValKrw -= fee;
+            cumulativeFxCostKrw += fee;
+            const coreNow = getCoreKrwAtFx(currFx);
+            const totNow = Math.max(1, coreNow + sleeveValKrw);
+            const curLevP = levEtf.prices[m];
+            const levGainPct = prevInLev && entryLevPrice > 0 ? ((curLevP / entryLevPrice) - 1.0) * 100.0 : null;
+            if (!nextInLev && levGainPct !== null && levGainPct > 0) pingPongWinCount++;
+            if (nextInLev) entryLevPrice = curLevP;
+
+            const refMonthSma = computeMonthlyOnlySmaAtMonth(refEtf.id, m, maPeriod);
+            const refDispPct = refMonthSma > 0 ? ((refP / refMonthSma) - 1.0) * 100.0 : 0.0;
+            const fmtRefSma = refEtf.currency === 'USD' ? `$${refMonthSma.toFixed(2)}` : `₩${Math.round(refMonthSma).toLocaleString('ko-KR')}`;
+
+            levTradeEvents.push({
+              ym: mEventDate,
+              sleeveType: 'LEV',
+              subType: 'LEV_MA',
+              assetId: levEtf.id,
+              assetTicker: levEtf.ticker,
+              assetName: levEtf.name,
+              trancheNum: `전술 ${levEtf.ticker} (${formatStMaLabel(maPeriod)}·월간)`,
+              action: nextInLev ? 'BUY' : 'CLEAR',
+              refPrice: +refP.toFixed(refEtf.currency === 'USD' ? 2 : 0),
+              refCurrency: refEtf.currency,
+              refDdPct: -refDdPctPos,
+              prevL: prevInLev ? `${levEtf.ticker} ${(sleeveShare * 100).toFixed(0)}%` : `${safeEtf.ticker}(현금 0%)`,
+              newL: nextInLev ? `${levEtf.ticker} ${(sleeveShare * 100).toFixed(0)}%` : `${safeEtf.ticker}(현금 0%)`,
+              baseSharePct: (coreNow / totNow) * 100.0,
+              levSharePct: nextInLev ? (sleeveValKrw / totNow) * 100.0 : 0.0,
+              levPrice: +curLevP.toFixed(levEtf.currency === 'USD' ? 2 : 0),
+              levCurrency: levEtf.currency,
+              fxRate: +currFx.toFixed(2),
+              tradeKrw: nextInLev ? sleeveValKrw : -sleeveValKrw,
+              profitPct: levGainPct,
+              portValKrw: totNow,
+              detailNote: nextInLev
+                ? `⚡ [전술${Math.round(sleeveShare * 100)}%·${levEtf.ticker}·월별데이터] Ref(${refEtf.ticker}) 월간 ${formatStMaLabel(maPeriod)}(${fmtRefSma}, 이격 ${refDispPct >= 0 ? '+' : ''}${refDispPct.toFixed(2)}%) 상향돌파 → ${safeEtf.ticker} 매도 후 ${levEtf.ticker} 매수`
+                : `🛡️ [전술${Math.round(sleeveShare * 100)}%·${levEtf.ticker}·월별데이터] Ref(${refEtf.ticker}) 월간 ${formatStMaLabel(maPeriod)}(${fmtRefSma}, 이격 ${refDispPct.toFixed(2)}%) 하향이탈 → ${levEtf.ticker} 전량매도 후 ${safeEtf.ticker} 현금대피`
+            });
+            prevInLev = nextInLev;
+          }
+        } else {
+          // ── [일별 데이터 기준 (REAL_DAILY_DB)] ──
+          for (let g = gStart; g <= gEnd; g++) {
+            const dayDate = fd.dates[g];
+            const dFx = fxMode === 'real_fx' ? fd.usdkrw[g] : startFx;
+            const dFxRatio = fxMode === 'real_fx' ? fd.fxRatio[g] : 1.0;
+
+            for (let i = 0; i < coreTrackers.length; i++) {
+              const trk = coreTrackers[i];
+              const slotEtf = MARKET_DB.etfs[trk.id];
+              const activeEtf = trk.inRisk ? slotEtf : trk.safeEtfObj;
+              const fdActive = trk.inRisk ? trk.fdItem : trk.fdSafe;
+              const dRetSlot = getDailyRetInSlotUnit(slotEtf, activeEtf, fdActive, g, dFxRatio);
+              coreHoldingsNative[i] *= (1.0 + dRetSlot);
+            }
+
+            const isPostUsCloseDay = isRealM && refEtf.market === 'US' && REAL_DAILY_DB && dayDate > REAL_DAILY_DB.usLatestCloseDate;
+            const gLev = (crossMarketLag && isRealM) ? Math.min(fd.totalDays - 1, g + 1) : g;
+
+            if (!(crossMarketLag && isPostUsCloseDay)) {
+              const tacActiveEtf = prevInLev ? levEtf : safeEtf;
+              const fdTacActive = prevInLev ? fdLev : fdSafeLev;
+              const gTac = prevInLev ? gLev : g;
+              const dFxRatioTac = (fxMode === 'real_fx' && gTac < fd.totalDays) ? fd.fxRatio[gTac] : dFxRatio;
+              const dSleeveRetKrw = getDailyRetKrw(tacActiveEtf, fdTacActive, gTac, dFxRatioTac);
+              sleeveValKrw *= (1.0 + dSleeveRetKrw);
+            }
+
+            const refP = fdRef.prices[g];
+            if (refP > refPeakPrice) refPeakPrice = refP;
+            const refDdPctPos = refPeakPrice > 0 ? ((refPeakPrice - refP) / refPeakPrice) * 100.0 : 0.0;
+
+            let nextInLev = prevInLev;
+            if (!isPostUsCloseDay) {
+              const rawWantLev = checkDailyMaTargetState(fdRef, g, maPeriod, prevInLev, levBuyBuf, levSellBuf);
+              if (rawWantLev !== prevInLev) {
+                levStreak++;
+                const reqConf = rawWantLev ? levBuyConf : levSellConf;
+                if (levStreak >= reqConf) {
+                  nextInLev = rawWantLev;
+                  levStreak = 0;
+                }
+              } else {
+                levStreak = 0;
+              }
+            }
+
+            for (let i = 0; i < coreTrackers.length; i++) {
+              const trk = coreTrackers[i];
+              const curP = trk.fdItem.prices[g];
+              if (curP > trk.peakPrice) trk.peakPrice = curP;
+              const assetDdPct = trk.peakPrice > 0 ? -((trk.peakPrice - curP) / trk.peakPrice) * 100.0 : 0.0;
+
+              if (trk.maPeriod > 0) {
+                const rawWantRisk = checkDailyMaTargetState(trk.fdItem, g, trk.maPeriod, trk.inRisk, coreBuyBuf, coreSellBuf);
+                let nextInRisk = trk.inRisk;
+                if (rawWantRisk !== trk.inRisk) {
+                  trk.streak++;
+                  const reqCoreConf = rawWantRisk ? coreBuyConf : coreSellConf;
+                  if (trk.streak >= reqCoreConf) {
+                    nextInRisk = rawWantRisk;
+                    trk.streak = 0;
+                  }
+                } else {
+                  trk.streak = 0;
+                }
+
+                if (nextInRisk !== trk.inRisk) {
+                  coreSwitchCount++;
+                  const slotKrw = Math.max(0, getAssetSlotKrwAtFx(i, dFx));
+                  const fee = slotKrw * (spreadRate * 0.45);
+                  cumulativeFxCostKrw += fee;
+                  if (trk.market === 'US') {
+                    coreHoldingsNative[i] = Math.max(0, coreHoldingsNative[i] - (fee / dFx));
+                  } else {
+                    coreHoldingsNative[i] = Math.max(0, coreHoldingsNative[i] - fee);
+                  }
+
+                  const gainPct = (!nextInRisk && trk.entryPrice > 0)
+                    ? ((curP / trk.entryPrice) - 1.0) * 100.0
+                    : null;
+                  if (!nextInRisk && gainPct !== null && gainPct > 0) trk.winCount++;
+                  if (nextInRisk) {
+                    trk.entryPrice = curP;
+                    trk.buyCount++;
+                  } else {
+                    trk.defendCount++;
+                  }
+
+                  const coreNow = getCoreKrwAtFx(dFx);
+                  const totNow = Math.max(1, coreNow + sleeveValKrw);
+                  const effWin = (trk.maPeriod === 2005) ? 20 : ((trk.maPeriod === 2026 || trk.maPeriod === 2060) ? 60 : trk.maPeriod);
+                  const daySma = getDailySmaAtG(trk.fdItem, g, effWin);
+                  const dispPct = daySma > 0 ? ((curP / daySma) - 1.0) * 100.0 : 0.0;
+                  const fmtSma = trk.currency === 'USD' ? `$${daySma.toFixed(2)}` : `₩${Math.round(daySma).toLocaleString('ko-KR')}`;
+
+                  levTradeEvents.push({
+                    ym: dayDate,
+                    sleeveType: 'CORE',
+                    subType: 'CORE_MA',
+                    assetId: trk.id,
+                    assetTicker: trk.ticker,
+                    assetName: trk.name,
+                    trancheNum: `코어 ${trk.ticker} (${formatStMaLabel(trk.maPeriod)})`,
+                    action: nextInRisk ? 'CORE_BUY' : 'CORE_DEFEND',
+                    refPrice: +curP.toFixed(trk.currency === 'USD' ? 2 : 0),
+                    refCurrency: trk.currency,
+                    refDdPct: assetDdPct,
+                    prevL: trk.inRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
+                    newL: nextInRisk ? `${trk.ticker} (${trk.targetPortPct.toFixed(1)}%)` : `${trk.safeTicker} (대피)`,
+                    baseSharePct: (coreNow / totNow) * 100.0,
+                    levSharePct: nextInLev ? (sleeveValKrw / totNow) * 100.0 : 0.0,
+                    levPrice: +curP.toFixed(trk.currency === 'USD' ? 2 : 0),
+                    levCurrency: trk.currency,
+                    fxRate: +dFx.toFixed(2),
+                    tradeKrw: nextInRisk ? slotKrw : -slotKrw,
+                    profitPct: gainPct,
+                    portValKrw: totNow,
+                    detailNote: nextInRisk
+                      ? `📈 [코어${Math.round(coreShare * 100)}%·${trk.ticker}] 일일 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct >= 0 ? '+' : ''}${dispPct.toFixed(2)}%) 상향돌파 [${wsSpec.shortBadge}] → ${trk.safeTicker} 매도 후 ${trk.ticker} 재진입`
+                      : `🛡️ [코어${Math.round(coreShare * 100)}%·${trk.ticker}] 일일 ${formatStMaLabel(trk.maPeriod)}(${fmtSma}, 이격 ${dispPct.toFixed(2)}%) 하향이탈 [${wsSpec.shortBadge}] → ${trk.ticker} 매도 후 ${trk.safeTicker} 현금대피`
+                  });
+
+                  trk.inRisk = nextInRisk;
+                }
+              }
+            }
+
+            if (nextInLev !== prevInLev) {
+              levSwitchCount++;
+              const fee = sleeveValKrw * (spreadRate * 0.5);
+              sleeveValKrw -= fee;
+              cumulativeFxCostKrw += fee;
+              const coreNow = getCoreKrwAtFx(dFx);
+              const totNow = Math.max(1, coreNow + sleeveValKrw);
+              const curLevP = fdLev.prices[gLev];
+              const levGainPct = prevInLev && entryLevPrice > 0 ? ((curLevP / entryLevPrice) - 1.0) * 100.0 : null;
+              if (!nextInLev && levGainPct !== null && levGainPct > 0) pingPongWinCount++;
+              if (nextInLev) entryLevPrice = curLevP;
+
+              const effLevWin = (maPeriod === 2005) ? 20 : ((maPeriod === 2026 || maPeriod === 2060) ? 60 : maPeriod);
+              const refDaySma = getDailySmaAtG(fdRef, g, effLevWin);
+              const refDispPct = refDaySma > 0 ? ((refP / refDaySma) - 1.0) * 100.0 : 0.0;
+              const fmtRefSma = refEtf.currency === 'USD' ? `$${refDaySma.toFixed(2)}` : `₩${Math.round(refDaySma).toLocaleString('ko-KR')}`;
+              const krxExecNote = (crossMarketLag && isRealM && gLev !== g) ? ` (한·미 시차 반영 KRX ${fd.dates[gLev]} 시세 체결)` : '';
+
+              levTradeEvents.push({
+                ym: dayDate,
+                sleeveType: 'LEV',
+                subType: 'LEV_MA',
+                assetId: levEtf.id,
+                assetTicker: levEtf.ticker,
+                assetName: levEtf.name,
+                trancheNum: `전술 ${levEtf.ticker} (${formatStMaLabel(maPeriod)})`,
+                action: nextInLev ? 'BUY' : 'CLEAR',
+                refPrice: +refP.toFixed(refEtf.currency === 'USD' ? 2 : 0),
+                refCurrency: refEtf.currency,
+                refDdPct: -refDdPctPos,
+                prevL: prevInLev ? `${levEtf.ticker} ${(sleeveShare * 100).toFixed(0)}%` : `${safeEtf.ticker}(현금 0%)`,
+                newL: nextInLev ? `${levEtf.ticker} ${(sleeveShare * 100).toFixed(0)}%` : `${safeEtf.ticker}(현금 0%)`,
+                baseSharePct: (coreNow / totNow) * 100.0,
+                levSharePct: nextInLev ? (sleeveValKrw / totNow) * 100.0 : 0.0,
+                levPrice: +curLevP.toFixed(levEtf.currency === 'USD' ? 2 : 0),
+                levCurrency: levEtf.currency,
+                fxRate: +dFx.toFixed(2),
+                tradeKrw: nextInLev ? sleeveValKrw : -sleeveValKrw,
+                profitPct: levGainPct,
+                portValKrw: totNow,
+                detailNote: nextInLev
+                  ? `⚡ [전술${Math.round(sleeveShare * 100)}%·${levEtf.ticker}] Ref(${refEtf.ticker}) 일일 ${formatStMaLabel(maPeriod)}(${fmtRefSma}, 이격 ${refDispPct >= 0 ? '+' : ''}${refDispPct.toFixed(2)}%) 상향돌파 [${wsSpec.shortBadge}] → ${safeEtf.ticker} 매도 후 ${levEtf.ticker} 매수${krxExecNote}`
+                  : `🛡️ [전술${Math.round(sleeveShare * 100)}%·${levEtf.ticker}] Ref(${refEtf.ticker}) 일일 ${formatStMaLabel(maPeriod)}(${fmtRefSma}, 이격 ${refDispPct.toFixed(2)}%) 하향이탈 [${wsSpec.shortBadge}] → ${levEtf.ticker} 전량매도 후 ${safeEtf.ticker} 현금대피${krxExecNote}`
+              });
+              prevInLev = nextInLev;
+            }
+          }
+        }
+
+        const valBeforeContrib = getCoreKrwAtFx(currFx) + sleeveValKrw;
+        const monthRet = prevTotalKrw > 0 ? (valBeforeContrib / prevTotalKrw) - 1.0 : 0.0;
+        monthlyReturnsKrw.push(monthRet);
+
+        if (monthlyKrw > 0) {
+          currentInvestedKrw += monthlyKrw;
+          const addCore = monthlyKrw * coreShare;
+          sleeveValKrw += monthlyKrw * sleeveShare * (1 - spreadRate * 0.5);
+          for (let i = 0; i < items.length; i++) {
+            const etf = MARKET_DB.etfs[items[i].id];
+            const aKrw = addCore * weights[i];
+            coreHoldingsNative[i] += etf.market === 'US' ? (aKrw * (1 - spreadRate)) / currFx : aKrw;
+          }
         }
 
         const totalEndKrw = getCoreKrwAtFx(currFx) + sleeveValKrw;
@@ -4033,7 +4380,7 @@
           maxDdTroughMonth = ym;
         }
 
-        const endRefP = fdRef.prices[gEnd];
+        const endRefP = effFreq === 'daily' ? fdRef.prices[gEnd] : refEtf.prices[m];
         const endRefDdPos = refPeakPrice > 0 ? ((refPeakPrice - endRefP) / refPeakPrice) * 100.0 : 0.0;
 
         timelineMonths.push(ym);
@@ -4065,25 +4412,16 @@
       const rfAnnual = 0.025;
       const sharpe = annualVol > 0 ? (cagr - rfAnnual) / annualVol : 0;
 
-      const downsideSq = activeRets.reduce((a, b) => {
-        const diff = b - (rfAnnual / 12);
-        return diff < 0 ? a + diff * diff : a;
-      }, 0) / nR;
-      const downsideVol = Math.sqrt(downsideSq) * Math.sqrt(12);
-      const sortino = downsideVol > 0 ? (cagr - rfAnnual) / downsideVol : 0;
-
+      const downRets = activeRets.filter(r => r < 0);
+      const downVar = downRets.length > 0 ? downRets.reduce((a, b) => a + b * b, 0) / nR : 0.0001;
+      const sortino = (Math.sqrt(downVar) * Math.sqrt(12)) > 0 ? (cagr - rfAnnual) / (Math.sqrt(downVar) * Math.sqrt(12)) : 0;
       const winMonths = activeRets.filter(r => r > 0).length;
-      const winRate = activeRets.length > 0 ? winMonths / activeRets.length : 0;
-      const maxLevSharePct = levWeightSeries.length > 0 ? Math.max(...levWeightSeries) : 0;
+      const winRate = nR > 0 ? winMonths / nR : 0;
 
       return {
-        execMode: 'strat1_ma_switch',
-        pingPongWinCount,
-        coreTrackers,
-        coreSwitchCount,
-        months: timelineMonths,
-        valuesKrw: portfolioKrwValues,
-        investedKrw: totalInvestedSeries,
+        timelineMonths,
+        portfolioKrwValues,
+        totalInvestedSeries,
         drawdowns,
         monthlyReturnsKrw,
         fxRatesUsed,
@@ -4091,10 +4429,11 @@
         levLSeries,
         levWeightSeries,
         levTradeEvents,
-        levSwitchCount,
-        maxLevSharePct,
+        trancheSummary: null,
+        coreTrackers,
+        coreSwitchCount,
         finalKrw,
-        totalInvested: currentInvestedKrw,
+        totalInvestedKrw: currentInvestedKrw,
         netProfitKrw: finalKrw - currentInvestedKrw,
         cagr,
         cumReturn,
@@ -4106,16 +4445,17 @@
         sortino,
         winRate,
         rebalanceCount,
-        cumulativeFxCostKrw,
-        startFx: MARKET_DB.usdkrw[startIdx],
-        endFx: MARKET_DB.usdkrw[endIdx]
+        levSwitchCount,
+        pingPongWinCount,
+        cumulativeFxCostKrw
       };
     }
 
-    // ★ STRATEGY 2 ENGINE: 90% Core Asset Allocation + 10% Cash Reserve -> MDD Stepwise Leveraged Buy & Core 5% Sell-to-Buy
+    // ★ Strategy 2 Engine: 90% Core (4 Assets) + 10% Cash Reserve, 5% MDD Step Buy/Sell + Core 5% Sell-to-Buy
     function simulateStrat2Mdd9010Series(items, startIdx, endIdx, initialKrw, monthlyKrw, rebalanceMode, fxMode, fxSpreadPct, divMode, mddLevOptions) {
+      const effFreq = (mddLevOptions && mddLevOptions.dataFreqMode) || (typeof state !== 'undefined' && state.dataFreqMode) || 'daily';
       const paths = getDailyMarketPaths();
-      const D = paths.daysPerMonth;
+      const D = effFreq === 'monthly' ? 1 : paths.daysPerMonth;
       const totalW = items.reduce((s, x) => s + (parseFloat(x.weight) || 0), 0);
       const weights = items.map(x => totalW > 0 ? (parseFloat(x.weight) || 0) / totalW : 1 / items.length);
       const spreadRate = (parseFloat(fxSpreadPct) || 0) / 100;
@@ -4401,8 +4741,7 @@
           cashKrw += monthlyKrw * sleeveShare * (1 - spreadRate * 0.5);
         }
 
-        const { isIncompleteEndMonth: strat2IncompleteEnd } = getEffectiveMonthDayBounds(ym, m, startIdx, endIdx);
-        const shouldRebal = !strat2IncompleteEnd && (
+        const shouldRebal = (
           rebalanceMode === 'monthly'
           || (rebalanceMode === 'quarterly' && stepIndex % 3 === 0)
           || (rebalanceMode === 'yearly' && stepIndex % 12 === 0)
@@ -4433,13 +4772,13 @@
           const rebalTypeStr = rebalLabelMap[rebalanceMode] || '정기';
           const endRefDdPosNow = refPeakPrice > 0 ? ((refPeakPrice - refEndP) / refPeakPrice) * 100.0 : 0.0;
           levTradeEvents.push({
-            ym: formatEventDateInMonth(ym, m, startIdx, endIdx, 'end'),
+            ym: formatEventDateInMonth(ym, m, startIdx, endIdx, 'start'),
             sleeveType: 'REBAL',
             subType: 'CORE_REBAL',
             assetId: 'PORTFOLIO',
             assetTicker: coreTickersLabel,
-            assetName: `${rebalTypeStr} 코어 리밸런싱`,
-            trancheNum: `${rebalTypeStr} 리밸런싱`,
+            assetName: `${rebalTypeStr} 월초 코어 리밸런싱`,
+            trancheNum: `${rebalTypeStr} 리밸런싱(월초)`,
             action: 'REBAL',
             refPrice: refEndP,
             refCurrency: refEtf.currency,
@@ -4730,13 +5069,10 @@
             }
           }
 
-          const { isIncompleteEndMonth: baseIncompleteEnd } = getEffectiveMonthDayBounds(ym, m, startIdx, endIdx);
           let shouldRebalanceBase = false;
-          if (!baseIncompleteEnd) {
-            if (rebalanceMode === 'monthly') shouldRebalanceBase = true;
-            else if (rebalanceMode === 'quarterly' && stepIndex % 3 === 0) shouldRebalanceBase = true;
-            else if (rebalanceMode === 'yearly' && stepIndex % 12 === 0) shouldRebalanceBase = true;
-          }
+          if (rebalanceMode === 'monthly') shouldRebalanceBase = true;
+          else if (rebalanceMode === 'quarterly' && stepIndex % 3 === 0) shouldRebalanceBase = true;
+          else if (rebalanceMode === 'yearly' && stepIndex % 12 === 0) shouldRebalanceBase = true;
 
           const levStepChanged = levActive && Math.abs(newEffL - prevEffL) > 1e-4;
 
@@ -4787,13 +5123,13 @@
               const rebalTypeStr = rebalLabelMap[rebalanceMode] || '정기';
               const coreTickersLabel = items.map(x => MARKET_DB.etfs[x.id].ticker).join('·');
               levTradeEvents.push({
-                ym: formatEventDateInMonth(ym, m, startIdx, endIdx, 'end'),
+                ym: formatEventDateInMonth(ym, m, startIdx, endIdx, 'start'),
                 sleeveType: 'REBAL',
                 subType: 'CORE_REBAL',
                 assetId: 'PORTFOLIO',
                 assetTicker: coreTickersLabel,
-                assetName: `${rebalTypeStr} 정기 리밸런싱`,
-                trancheNum: `${rebalTypeStr} 리밸런싱`,
+                assetName: `${rebalTypeStr} 월초 정기 리밸런싱`,
+                trancheNum: `${rebalTypeStr} 리밸런싱(월초)`,
                 action: 'REBAL',
                 refPrice: refEtf ? refEtf.prices[m] : 0,
                 refCurrency: refEtf ? refEtf.currency : 'USD',
@@ -4960,6 +5296,7 @@
 
       const mddLevConfig = {
         enabled: state.mddLevEnabled,
+        dataFreqMode: state.dataFreqMode || 'daily',
         execMode: state.levExecMode,
         maPeriod: state.levMaPeriod,
         whipsawBufMode: state.whipsawBufMode,
@@ -7825,6 +8162,15 @@ if __name__ == "__main__":
         });
       });
 
+      document.querySelectorAll('.data-freq-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          state.dataFreqMode = e.currentTarget.getAttribute('data-freq') || 'daily';
+          updateDataFreqButtonsUI();
+          runBacktest();
+          saveUserSettingsToStorage();
+        });
+      });
+
       document.querySelectorAll('.rebal-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           state.rebalance = e.currentTarget.getAttribute('data-rebal');
@@ -8263,7 +8609,42 @@ if __name__ == "__main__":
       });
     }
 
+    function updateDataFreqButtonsUI() {
+      const freq = state.dataFreqMode || 'daily';
+      document.querySelectorAll('.data-freq-btn').forEach(btn => {
+        const f = btn.getAttribute('data-freq');
+        if (f === freq) {
+          btn.className = 'data-freq-btn py-2 px-2 rounded-lg text-xs font-extrabold transition bg-white text-indigo-700 shadow-sm';
+        } else {
+          btn.className = 'data-freq-btn py-2 px-2 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900';
+        }
+      });
+      const badge = document.getElementById('activeDataFreqBadge');
+      if (badge) {
+        badge.textContent = freq === 'monthly'
+          ? '현재: 월별 데이터 (MARKET_DB)'
+          : '현재: 일별 데이터 (REAL_DAILY_DB)';
+        badge.className = freq === 'monthly'
+          ? 'px-2 py-0.5 rounded bg-amber-600 text-white text-[10px] font-bold num-font'
+          : 'px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-bold num-font';
+      }
+      const desc = document.getElementById('dataFreqModeDesc');
+      if (desc) {
+        desc.innerHTML = freq === 'monthly'
+          ? '• <strong>월별 데이터 기준:</strong> <code class="font-bold">MARKET_DB</code>(월간 종가·수익률)를 사용해 코어(80%) 및 알파 레버리지(20%)의 이평선 돌파·이탈과 MDD 분할매매를 <strong>매월(월별) 단위로 체크·스위칭</strong>합니다.'
+          : '• <strong>일별 데이터 기준:</strong> <code class="font-bold">REAL_DAILY_DB</code>(일일 종가)를 사용해 코어(80%) 및 알파 레버리지(20%)의 이평선 돌파·이탈과 MDD 분할매매를 <strong>매일(일별) 체크·스위칭</strong>합니다.';
+      }
+    }
+
     function updateRebalanceButtonsUI() {
+      const rebalLabelMap = {
+        monthly: '현재: 매월 (1개월 · 월초)',
+        quarterly: '현재: 분기별 (3개월 · 월초)',
+        yearly: '현재: 매년 (12개월 · 월초)',
+        none: '현재: 안함 (단순보유)'
+      };
+      const txtEl = document.getElementById('activeRebalModeText');
+      if (txtEl) txtEl.textContent = rebalLabelMap[state.rebalance] || '현재: 분기별 (3개월 · 월초)';
       document.querySelectorAll('.rebal-btn').forEach(btn => {
         const r = btn.getAttribute('data-rebal');
         if (r === state.rebalance) {
@@ -8272,6 +8653,7 @@ if __name__ == "__main__":
           btn.className = 'rebal-btn py-2 px-2 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900';
         }
       });
+      updateDataFreqButtonsUI();
     }
 
     // =========================================================================
@@ -8292,6 +8674,7 @@ if __name__ == "__main__":
       divMode: state.divMode,
       startDate: state.startDate,
       endDate: state.endDate,
+      dataFreqMode: state.dataFreqMode,
       rebalance: state.rebalance,
       benchmark: state.benchmark,
       scaleType: state.scaleType,
@@ -8539,6 +8922,7 @@ if __name__ == "__main__":
         endDate: state.endDate,
         exactStartDate: document.getElementById('inputExactStartDate')?.value || '',
         exactEndDate: document.getElementById('inputExactEndDate')?.value || '',
+        dataFreqMode: state.dataFreqMode,
         rebalance: state.rebalance,
         benchmark: state.benchmark,
         scaleType: state.scaleType,
