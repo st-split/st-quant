@@ -1780,7 +1780,16 @@
 
           if (meta.type === 'real' && realSeries) {
             for (let k = 0; k < len; k++) {
-              prices[g0 + k] = realSeries[meta.list[k].rIdx];
+              const rIdx = meta.list[k].rIdx;
+              let pVal = realSeries[rIdx];
+              if (rIdx > 0 && rIdx + 1 < realSeries.length) {
+                const pPrevDay = realSeries[rIdx - 1];
+                const pNextDay = realSeries[rIdx + 1];
+                if (pPrevDay > 0 && pVal > 0 && ((pVal / pPrevDay - 1) < -0.18 && (pNextDay / pVal - 1) > 0.22 || (pVal / pPrevDay - 1) > 0.22 && (pNextDay / pVal - 1) < -0.18)) {
+                  pVal = pPrevDay;
+                }
+              }
+              prices[g0 + k] = pVal;
             }
           } else {
             const ratio = prevP > 0 ? (endP / prevP) : 1.0;
@@ -1804,7 +1813,7 @@
               const dTot = Math.pow(Math.max(1e-4, 1.0 + mTotRet), 1.0 / len) - 1.0;
               dailyRetReinvest[g] = dTot;
               dailyRetExclude[g] = dTot - dDiv;
-            } else if (meta.type === 'real' && realSeries && (MARKET_DB.months[m] >= '2026-01' || REAL_DAILY_DB.hasRealHistoricalVolatility)) {
+            } else if (meta.type === 'real' && realSeries && MARKET_DB.months[m] >= '2026-01') {
               const rawPriceRet = pPrev > 0 ? ((pCur / pPrev) - 1.0) : 0.0;
               dailyRetReinvest[g] = rawPriceRet + dDiv;
               dailyRetExclude[g] = rawPriceRet;
