@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ST Quant" />
+  <link rel="manifest" href="manifest.json" />
   <title>ST Quant BackTester - 글로벌·국내 연금 ETF 자산배분 &amp; 이평선·MDD 레버리지 백테스터 (원화 기준)</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -9642,6 +9646,13 @@ if __name__ == "__main__":
       bindEvents();
       bindPersistenceExtraControls();
       runBacktest();
+      // ★ 스마트폰 내부 저장소(CacheStorage)에 stock_data.js와 앱 전체를 영구 저장하는 Service Worker 등록
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          reg.update();
+        }).catch(() => {});
+      }
+
 
       // ★ 스마트폰/브라우저 기기 내 저장된 커스텀 종목(CUSTOM_*)을 앱 실행 시 백그라운드에서 최신 Yahoo Finance 시세로 자동 동기화
       setTimeout(async () => {
