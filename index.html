@@ -185,7 +185,7 @@
 
   <!-- Top Navigation Header -->
   <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-extrabold text-base shadow-inner num-font tracking-tighter">
           ST
@@ -202,30 +202,33 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-2 flex-wrap">
-        <button id="btnOpenAddModal" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition">
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar shrink-0">
+        <button id="btnMobOpenMoreSheet" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-extrabold flex items-center gap-1 shrink-0 whitespace-nowrap transition" title="메뉴 열기">
+          <span>☰ 메뉴</span>
+        </button>
+        <button id="btnRunBacktestTop" type="button" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold flex items-center gap-1 shadow-sm shrink-0 whitespace-nowrap transition">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>백테스트</span>
+        </button>
+        <button id="btnOpenPwModal" type="button" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white border border-amber-400/40 text-xs font-bold flex items-center gap-1 shadow-sm shrink-0 whitespace-nowrap transition" title="비밀번호 변경 및 설정 유지">
+          <span>🔑 비번변경</span>
+        </button>
+        <button id="btnLockAppNow" type="button" class="px-2.5 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white border border-rose-500/40 text-xs font-bold flex items-center gap-1 shadow-sm shrink-0 whitespace-nowrap transition" title="즉시 화면 잠금">
+          <span>🔒 잠금</span>
+        </button>
+        <button id="btnOpenAddModal" type="button" class="hidden lg:flex px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium items-center gap-1.5 shrink-0 whitespace-nowrap transition">
           <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           ETF 종목 탐색·추가
         </button>
-        <button id="btnJumpTelegramBotTop" type="button" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white border border-sky-400/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+        <button id="btnJumpTelegramBotTop" type="button" class="hidden lg:flex px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white border border-sky-400/40 text-xs font-bold items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap transition">
           <span>🤖 텔레그램 매매가이드 &amp; 파이썬 봇 코드</span>
         </button>
-        <button id="btnExportCsv" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition">
+        <button id="btnExportCsv" type="button" class="hidden lg:flex px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium items-center gap-1.5 shrink-0 whitespace-nowrap transition">
           <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           백테스트 데이터 CSV 저장
         </button>
-        <button id="btnDownloadStandaloneHtml" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+        <button id="btnDownloadStandaloneHtml" type="button" class="hidden lg:flex px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/40 text-xs font-bold items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap transition">
           <span>💾 독립실행 HTML 다운로드</span>
-        </button>
-        <button id="btnOpenPwModal" type="button" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white border border-amber-400/40 text-xs font-bold flex items-center gap-1 shadow-sm transition" title="비밀번호 변경 및 설정 유지">
-          <span>🔑 비번변경</span><span class="hidden sm:inline">·설정유지</span>
-        </button>
-        <button id="btnLockAppNow" type="button" class="px-2.5 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white border border-rose-500/40 text-xs font-bold flex items-center gap-1 shadow-sm transition" title="즉시 화면 잠금">
-          <span>🔒 잠금</span>
-        </button>
-        <button id="btnRunBacktestTop" type="button" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          백테스트 재실행
         </button>
       </div>
     </div>
@@ -8854,7 +8857,7 @@ if __name__ == "__main__":
     body {
       -webkit-tap-highlight-color: transparent;
       padding-bottom: calc(4.75rem + var(--safe-bottom));
-      overscroll-behavior-y: none;
+      
     }
     @media (min-width: 1024px) {
       body { padding-bottom: 0; }
@@ -9068,7 +9071,7 @@ if __name__ == "__main__":
   </div>
 
   <!-- ★ 모바일 전용: 우측 상단 [☰ 더보기 메뉴] 바텀 시트 모달 -->
-  <div id="mobMoreMenuSheet" class="fixed inset-0 z-[9980] hidden bg-slate-900/60 backdrop-blur-xs flex items-end justify-center lg:hidden">
+  <div id="mobMoreMenuSheet" class="fixed inset-0 z-[9980] hidden bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center">
     <div class="w-full max-w-lg bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl border-t border-slate-200 animate-slide-up" style="padding-bottom: calc(1.5rem + var(--safe-bottom));">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <div class="flex items-center gap-2">
@@ -9149,19 +9152,14 @@ if __name__ == "__main__":
         try { localStorage.setItem(ACCT_STORAGE_KEY, JSON.stringify(userAccounts)); } catch (e) {}
       }
 
-      // 1. 상단 헤더에 모바일 전용 [☰ 메뉴] 버튼 추가 및 감사 패널 접기
+      // 1. 상단 헤더 좌측 첫 번째 [☰ 메뉴] 버튼 이벤트 바인딩 및 감사 패널 접기
       function setupMobileHeaderAndAccordions() {
-        const headerBtnGroup = document.querySelector('header .max-w-7xl > div:nth-child(2)');
-        if (headerBtnGroup && !document.getElementById('btnMobOpenMoreSheet')) {
-          const moreBtn = document.createElement('button');
-          moreBtn.id = 'btnMobOpenMoreSheet';
-          moreBtn.type = 'button';
-          moreBtn.className = 'lg:hidden px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-extrabold flex items-center gap-1';
-          moreBtn.innerHTML = '<span>☰ 메뉴</span>';
-          headerBtnGroup.appendChild(moreBtn);
-
+        const moreBtn = document.getElementById('btnMobOpenMoreSheet');
+        if (moreBtn && !moreBtn.dataset.bound) {
+          moreBtn.dataset.bound = '1';
           moreBtn.addEventListener('click', () => {
-            document.getElementById('mobMoreMenuSheet').classList.remove('hidden');
+            const sheetEl = document.getElementById('mobMoreMenuSheet');
+            if (sheetEl) sheetEl.classList.remove('hidden');
           });
         }
 
@@ -9538,8 +9536,8 @@ if __name__ == "__main__":
         }
       }
 
-      // 5. 모바일 하단 5탭 전환 라우터 (데스크톱 화면에서는 전체 표시 유지)
-      function applyMobileTabLayout(tabKey) {
+      // 5. 모바일 하단 5탭 전환 라우터 (데스크톱 화면에서는 전체 표시 유지, 스크롤 중 주소창 숨김으로 인한 강제 상단 이동 방지)
+      function applyMobileTabLayout(tabKey, shouldScrollTop = false) {
         currentMobileTab = tabKey;
         const isMobile = window.innerWidth < 1024;
 
@@ -9555,7 +9553,6 @@ if __name__ == "__main__":
         const mainEl = document.querySelector('main');
         const asideEl = document.querySelector('main > aside');
         const rightSecEl = document.querySelector('main > section');
-        const detailTabsSec = document.getElementById('sectionDetailTabs');
         const extraContainer = document.getElementById('stMobileExtraViewsContainer');
         const viewAccounts = document.getElementById('mobViewAccounts');
         const viewAlarms = document.getElementById('mobViewAlarms');
@@ -9582,13 +9579,11 @@ if __name__ == "__main__":
             if (ch.id === 'sectionDetailTabs') ch.classList.add('hidden');
             else if (ch.id !== 'weightWarningBanner') ch.classList.remove('hidden');
           });
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (tabKey === 'strategy') {
           mainEl.classList.remove('hidden');
           asideEl.classList.remove('hidden');
           rightSecEl.classList.add('hidden');
           extraContainer.classList.add('hidden');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (tabKey === 'history') {
           mainEl.classList.remove('hidden');
           asideEl.classList.add('hidden');
@@ -9599,20 +9594,21 @@ if __name__ == "__main__":
             else ch.classList.add('hidden');
           });
           renderMobileFriendlyCards();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (tabKey === 'accounts') {
           mainEl.classList.add('hidden');
           extraContainer.classList.remove('hidden');
           viewAccounts.classList.remove('hidden');
           viewAlarms.classList.add('hidden');
           renderAccountsView();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (tabKey === 'alarms') {
           mainEl.classList.add('hidden');
           extraContainer.classList.remove('hidden');
           viewAccounts.classList.add('hidden');
           viewAlarms.classList.remove('hidden');
           renderAlarmsView();
+        }
+
+        if (shouldScrollTop) {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }
@@ -9693,15 +9689,23 @@ if __name__ == "__main__":
         }
         applyAlphaStrategyNaming(); // <-- 초기 로드 시 즉시 반영
 
+        let lastViewportIsMobile = window.innerWidth < 1024;
         document.querySelectorAll('.mob-nav-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             const targetTab = e.currentTarget.getAttribute('data-mob-nav');
-            applyMobileTabLayout(targetTab);
+            const isTabChange = targetTab !== currentMobileTab;
+            applyMobileTabLayout(targetTab, isTabChange);
           });
         });
 
         window.addEventListener('resize', () => {
-          applyMobileTabLayout(currentMobileTab);
+          const nowIsMobile = window.innerWidth < 1024;
+          // 모바일 스크롤 시 주소창 숨김/표시로 인한 세로(height) resize 이벤트는 무시하고,
+          // 데스크톱<->모바일 가로 해상도 경계(1024px)가 바뀔 때만 레이아웃을 갱신(스크롤 위치 유지)
+          if (nowIsMobile !== lastViewportIsMobile) {
+            lastViewportIsMobile = nowIsMobile;
+            applyMobileTabLayout(currentMobileTab, false);
+          }
         });
 
         // 계좌 탭 전환
