@@ -380,43 +380,39 @@
           <span id="sec2AsOfBadge" class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded num-font">🟢 실시간 ~2026.10.26</span>
         </div>
 
-        <!-- Start & End Date Selectors -->
+        <!-- Start & End Date Selectors (Unified YYYY-MM-DD Date Picker) -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <span class="text-xs font-semibold text-slate-700">백테스트 시작 ~ 종료 날짜</span>
+            <span class="text-xs font-semibold text-slate-700">백테스트 시작 ~ 종료 날짜 (년/월/일)</span>
             <span id="labelTotalMonths" class="text-[11px] font-semibold text-blue-600 num-font">15년 1개월 (181개월)</span>
           </div>
-          <div class="grid grid-cols-2 gap-2.5">
-            <div>
-              <label for="selectStartDate" class="block text-[11px] text-slate-500 mb-1">시작 년/월</label>
-              <select id="selectStartDate" class="w-full px-2.5 py-2 text-xs font-semibold num-font bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
-            </div>
-            <div>
-              <label for="selectEndDate" id="labelEndDateSelect" class="block text-[11px] text-slate-500 mb-1">종료 년/월 (실시간 연동)</label>
-              <select id="selectEndDate" class="w-full px-2.5 py-2 text-xs font-semibold num-font bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
-            </div>
+          <!-- Hidden legacy year/month selects for internal compatibility -->
+          <div class="hidden" aria-hidden="true">
+            <select id="selectStartDate"></select>
+            <select id="selectEndDate"></select>
+            <span id="labelEndDateSelect"></span>
           </div>
-          <!-- Real-Time Exact Start & End Date Picker Bar -->
-          <div class="mt-2 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 space-y-2">
+          <!-- Unified Exact Start & End Date Picker Bar -->
+          <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/90 space-y-2.5">
             <div class="flex items-center justify-between gap-1.5">
               <div class="flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="text-[11px] font-bold text-emerald-950">정밀 시작일 ~ 실시간 종료일 설정:</span>
+                <span class="text-[11px] font-bold text-emerald-950">시작 일자 ~ 종료 일자 설정</span>
               </div>
-              <button id="btnSyncTodayDate" type="button" class="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition" title="현재 브라우저 오늘 날짜로 즉시 동기화">
+              <button id="btnSyncTodayDate" type="button" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shadow-sm transition" title="현재 브라우저 오늘 날짜로 즉시 동기화">
                 🔄 오늘 날짜로 동기화
               </button>
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-2.5">
               <div>
-                <label for="inputExactStartDate" class="block text-[10px] font-semibold text-emerald-800 mb-0.5">시작 일자 (YYYY-MM-DD)</label>
+                <label for="inputExactStartDate" class="block text-[10px] font-semibold text-emerald-800 mb-1">시작 일자 (년/월/일)</label>
                 <input id="inputExactStartDate" type="date" value="2011-10-20" min="2010-01-01"
-                  class="w-full px-2 py-1 text-[11px] font-bold num-font bg-white border border-emerald-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  class="w-full px-2.5 py-1.5 text-xs font-bold num-font bg-white border border-emerald-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
               <div>
-                <label for="inputExactEndDate" class="block text-[10px] font-semibold text-emerald-800 mb-0.5">종료 일자 (실시간 연동)</label>
+                <label for="inputExactEndDate" class="block text-[10px] font-semibold text-emerald-800 mb-1">종료 일자 (년/월/일)</label>
                 <input id="inputExactEndDate" type="date" value="2026-10-26" min="2010-02-01"
-                  class="w-full px-2 py-1 text-[11px] font-bold num-font bg-white border border-emerald-300 rounded-lg text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  class="w-full px-2.5 py-1.5 text-xs font-bold num-font bg-white border border-emerald-300 rounded-lg text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
             </div>
           </div>
@@ -2181,10 +2177,16 @@
     function syncLiveCurrentDate(customDateStr = null) {
       const rawToday = getLocalTodayIsoString();
       const targetDateStr = (customDateStr && /^\d{4}-\d{2}-\d{2}$/.test(customDateStr)) ? customDateStr : rawToday;
-      const targetYm = targetDateStr.slice(0, 7);
+      const rawTargetYm = targetDateStr.slice(0, 7);
 
       const lastIdx = MARKET_DB.months.length - 1;
-      if (targetYm >= MARKET_DB.months[lastIdx] && REAL_DAILY_DB && REAL_DAILY_DB.dates) {
+      const latestDbYm = MARKET_DB.months[lastIdx];
+      const firstDbYm = MARKET_DB.months[0];
+      const targetYm = MARKET_DB.months.includes(rawTargetYm)
+        ? rawTargetYm
+        : (rawTargetYm >= latestDbYm ? latestDbYm : firstDbYm);
+
+      if (rawTargetYm >= latestDbYm && REAL_DAILY_DB && REAL_DAILY_DB.dates) {
         const usDayIdx = getRealDailyIndexForDate(targetDateStr, true);
         const krDayIdx = getRealDailyIndexForDate(targetDateStr, false);
         MARKET_DB.usdkrw[lastIdx] = REAL_DAILY_DB.usdkrw[usDayIdx] || 1338.71;
@@ -5354,12 +5356,26 @@
     function runBacktest() {
       let startIdx = MARKET_DB.months.indexOf(state.startDate);
       let endIdx = MARKET_DB.months.indexOf(state.endDate);
-      if (startIdx < 0) startIdx = 0;
-      if (endIdx <= startIdx) {
-        endIdx = Math.min(MARKET_DB.months.length - 1, startIdx + 4);
-        state.endDate = MARKET_DB.months[endIdx];
-        document.getElementById('selectEndDate').value = state.endDate;
+      if (startIdx < 0) {
+        startIdx = 0;
+        state.startDate = MARKET_DB.months[0];
       }
+      if (endIdx < 0) {
+        endIdx = MARKET_DB.months.length - 1;
+        state.endDate = MARKET_DB.months[endIdx];
+      }
+      if (endIdx <= startIdx) {
+        endIdx = MARKET_DB.months.length - 1;
+        if (endIdx <= startIdx) {
+          startIdx = Math.max(0, endIdx - 1);
+          state.startDate = MARKET_DB.months[startIdx];
+        }
+        state.endDate = MARKET_DB.months[endIdx];
+      }
+      const selStartEl = document.getElementById('selectStartDate');
+      if (selStartEl) selStartEl.value = state.startDate;
+      const selEndEl = document.getElementById('selectEndDate');
+      if (selEndEl) selEndEl.value = state.endDate;
 
       const numMonths = endIdx - startIdx + 1;
       const yrs = Math.floor(numMonths / 12);
@@ -8817,15 +8833,23 @@ if __name__ == "__main__":
         exactStartInp.addEventListener('change', (e) => {
           const val = e.target.value;
           if (!val) return;
-          const ym = val.slice(0, 7);
-          if (MARKET_DB.months.includes(ym)) {
-            state.startDate = ym;
-            document.getElementById('selectStartDate').value = state.startDate;
-            runBacktest();
-            showToast(`백테스트 시작 기준일이 [${val}] (${ym})로 변경되었습니다.`);
+          const rawYm = val.slice(0, 7);
+          const firstYm = MARKET_DB.months[0];
+          const maxStartYm = MARKET_DB.months[Math.max(0, MARKET_DB.months.length - 2)];
+          if (rawYm < firstYm) {
+            showToast('2010년 1월 1일 이후의 시작 날짜를 선택해 주세요.');
+            exactStartInp.value = `${firstYm}-01`;
+            state.startDate = firstYm;
+          } else if (MARKET_DB.months.includes(rawYm) && rawYm <= maxStartYm) {
+            state.startDate = rawYm;
           } else {
-            showToast('2010년 1월 이후의 날짜를 선택해 주세요.');
+            state.startDate = maxStartYm;
           }
+          const startSel = document.getElementById('selectStartDate');
+          if (startSel) startSel.value = state.startDate;
+          runBacktest();
+          saveUserSettingsToStorage();
+          showToast(`백테스트 시작 기준일이 [${exactStartInp.value}]로 변경되었습니다.`);
         });
       }
 
@@ -8834,20 +8858,24 @@ if __name__ == "__main__":
         exactDateInp.addEventListener('change', (e) => {
           const val = e.target.value;
           if (!val) return;
-          const ym = val.slice(0, 7);
-          if (ym >= '2026-10') {
+          const rawYm = val.slice(0, 7);
+          const latestDbYm = MARKET_DB.months[MARKET_DB.months.length - 1];
+          if (rawYm >= latestDbYm) {
             const { targetDateStr, targetYm } = syncLiveCurrentDate(val);
             state.endDate = targetYm;
             initSelectors();
             exactDateInp.value = targetDateStr;
             runBacktest();
-            showToast(`백테스트 종료 기준일이 [${targetDateStr}]로 실시간 업데이트되었습니다.`);
-          } else if (MARKET_DB.months.includes(ym)) {
-            state.endDate = ym;
-            document.getElementById('selectEndDate').value = state.endDate;
+            saveUserSettingsToStorage();
+            showToast(`백테스트 종료 기준일이 [${targetDateStr}]로 업데이트되었습니다.`);
+          } else if (MARKET_DB.months.includes(rawYm)) {
+            state.endDate = rawYm;
+            const endSel = document.getElementById('selectEndDate');
+            if (endSel) endSel.value = state.endDate;
             exactDateInp.value = val;
             runBacktest();
-            showToast(`백테스트 종료 기준일이 [${val}] (${ym})로 변경되었습니다.`);
+            saveUserSettingsToStorage();
+            showToast(`백테스트 종료 기준일이 [${val}]로 변경되었습니다.`);
           } else {
             showToast('2010년 2월 이후의 종료 날짜를 선택해 주세요.');
           }
@@ -8875,10 +8903,14 @@ if __name__ == "__main__":
       if (btnSyncToday) {
         btnSyncToday.addEventListener('click', () => {
           const { targetDateStr, targetYm } = syncLiveCurrentDate(null);
-          initSelectors();
           state.endDate = targetYm;
-          document.getElementById('selectEndDate').value = state.endDate;
+          initSelectors();
+          const endSel = document.getElementById('selectEndDate');
+          if (endSel) endSel.value = state.endDate;
+          const exactEndInp = document.getElementById('inputExactEndDate');
+          if (exactEndInp) exactEndInp.value = targetDateStr;
           runBacktest();
+          saveUserSettingsToStorage();
           showToast(`오늘 날짜(${targetDateStr}) 기준으로 백테스트 종료일이 실시간 동기화되었습니다.`);
         });
       }
@@ -8888,10 +8920,12 @@ if __name__ == "__main__":
         const currentToday = getLocalTodayIsoString();
         if (currentToday !== LAST_SYNCED_LIVE_DATE) {
           const { targetDateStr, targetYm } = syncLiveCurrentDate(currentToday);
-          initSelectors();
           state.endDate = targetYm;
+          initSelectors();
           const endSel = document.getElementById('selectEndDate');
           if (endSel) endSel.value = state.endDate;
+          const exactEndInp = document.getElementById('inputExactEndDate');
+          if (exactEndInp) exactEndInp.value = targetDateStr;
           runBacktest();
           showToast(`날짜 변경 감지: 백테스트 종료일이 오늘(${targetDateStr})로 자동 업데이트되었습니다.`);
         }
@@ -9527,7 +9561,10 @@ if __name__ == "__main__":
         });
 
         if (!MARKET_DB.months.includes(state.startDate)) state.startDate = '2011-10';
-        if (!MARKET_DB.months.includes(state.endDate)) state.endDate = MARKET_DB.months[MARKET_DB.months.length - 1];
+        if (!MARKET_DB.months.includes(state.endDate) || state.endDate === '2010-05') {
+          state.endDate = MARKET_DB.months[MARKET_DB.months.length - 1];
+          if (saved) saved.exactEndDate = MARKET_DB.asOfDate || getLocalTodayIsoString();
+        }
         if (!MARKET_DB.etfs[state.refAssetId]) state.refAssetId = 'QQQ';
         if (!MARKET_DB.etfs[state.levAssetId]) state.levAssetId = 'TQQQ';
 
