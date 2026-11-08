@@ -275,10 +275,10 @@
   </header>
 
   <!-- Main Content Grid -->
-  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+  <main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-5 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 flex-1 min-w-0 overflow-x-hidden">
 
     <!-- Left Column: Portfolio & Backtest Configuration (4 cols on desktop) -->
-    <aside class="lg:col-span-4 space-y-5">
+    <aside class="lg:col-span-4 space-y-5 min-w-0 max-w-full overflow-x-hidden">
 
       <!-- 1. Investment Amount & FX Settings (KRW based) -->
       <section class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 space-y-4">
@@ -705,9 +705,9 @@
             </div>
 
             <!-- Scope Selector: Apply to both 20% Tactical + 80% Core MA or 20% Tactical only -->
-            <div class="flex items-center justify-between gap-2 pt-1 border-t border-emerald-200/70">
+            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-emerald-200/70 min-w-0">
               <label for="selectCoreCashScope" class="text-[10px] font-bold text-emerald-900 shrink-0">현금자산 적용 범위:</label>
-              <select id="selectCoreCashScope" class="flex-1 px-2 py-1 text-[10px] font-bold bg-white border border-emerald-300 rounded-lg text-emerald-950 focus:outline-none">
+              <select id="selectCoreCashScope" class="flex-1 min-w-0 max-w-full px-2 py-1 text-[10px] font-bold bg-white border border-emerald-300 rounded-lg text-emerald-950 focus:outline-none">
                 <option value="BOTH" selected>⚡20% 레버리지 + 🛡️80% 코어 이평선 대피 모두 적용</option>
                 <option value="LEV_ONLY">⚡20% 레버리지 슬리브만 적용 (코어 80%는 통화별 기본 단기채)</option>
               </select>
@@ -863,7 +863,7 @@
     </aside>
 
     <!-- Right Column: Results Dashboard, Charts & Analytics (8 cols on desktop) -->
-    <section class="lg:col-span-8 space-y-5">
+    <section class="lg:col-span-8 space-y-5 min-w-0 max-w-full overflow-x-hidden">
 
       <!-- Real Market Data & MDD Leverage Status Banner -->
       <div class="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-violet-950 text-white border border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-3">
@@ -876,7 +876,7 @@
             • <strong>기본 자산배분 단독</strong> 대비 <strong>MDD 레버리지 결합</strong> 성과와 매수·매도 시그널을 실시간 비교합니다. (기준일: 2026.10.26)
           </p>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
+        <div class="flex flex-wrap items-center gap-1.5 min-w-0 max-w-full">
           <button id="btnJumpLevSignals" type="button" class="px-3 py-1.5 rounded-xl bg-violet-500/30 hover:bg-violet-500/40 text-violet-100 text-xs font-semibold border border-violet-400/30 transition">
             ⚡ 20% 레버리지 &amp; 🛡️ 80% 코어 스위칭 내역 ↓
           </button>
@@ -2629,9 +2629,9 @@
             </div>
           </div>
           <!-- Per-Asset Moving Average Filter (단순보유 / 60일선 / 120일선 / 200일선) -->
-          <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 gap-1">
+          <div class="flex flex-wrap items-center justify-between pt-1.5 border-t border-slate-100 gap-1.5">
             <span class="text-[10px] font-semibold text-slate-500 shrink-0">이평선 필터 (하회→${safeCashLabel}):</span>
-            <div class="flex items-center gap-1">
+            <div class="flex flex-wrap items-center gap-1 min-w-0">
               <button type="button" data-ma-idx="${idx}" data-ma-val="0" class="asset-ma-btn px-1.5 py-0.5 rounded text-[10px] font-bold transition ${maPeriod === 0 ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">보유</button>
               <button type="button" data-ma-idx="${idx}" data-ma-val="60" class="asset-ma-btn px-1.5 py-0.5 rounded text-[10px] font-bold transition ${maPeriod === 60 ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}">60일</button>
               <button type="button" data-ma-idx="${idx}" data-ma-val="120" class="asset-ma-btn px-1.5 py-0.5 rounded text-[10px] font-bold transition ${maPeriod === 120 ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}">120일</button>
@@ -8854,10 +8854,26 @@ if __name__ == "__main__":
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
+    html, body {
+      overflow-x: hidden !important;
+      max-width: 100vw !important;
+      width: 100% !important;
+      position: relative;
+    }
     body {
       -webkit-tap-highlight-color: transparent;
       padding-bottom: calc(4.75rem + var(--safe-bottom));
-      
+    }
+    main, main > aside, main > section, main > aside > section, main > section > div, #sectionSubCharts > div, #stMobileExtraViewsContainer {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+    }
+    select, input {
+      max-width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box;
+      text-overflow: ellipsis;
     }
     @media (min-width: 1024px) {
       body { padding-bottom: 0; }
@@ -8887,10 +8903,16 @@ if __name__ == "__main__":
       #realDailyAuditPanel.mob-collapsed > div:last-child {
         display: none !important;
       }
-      /* 입력 폼 터치 시 iOS/Android 자동 확대 방지 및 터치 영역 확보 */
-      input[type="number"], input[type="text"], input[type="password"], input[type="date"], select {
-        font-size: 16px !important;
-        min-height: 42px;
+      /* 입력 폼 터치 영역 확보 및 가로 넘침(우측 백색 여백) 원천 차단 */
+      input[type="number"], input[type="text"], input[type="password"] {
+        font-size: 15px !important;
+        min-height: 40px;
+      }
+      input[type="date"], select {
+        font-size: 13px !important;
+        min-height: 38px;
+        width: 100% !important;
+        max-width: 100% !important;
       }
       input[type="range"] {
         height: 8px !important;
