@@ -870,15 +870,59 @@
         <div id="portfolioAssetList" class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1"></div>
 
         <!-- Quick Add ETF Bar -->
-        <div class="pt-2 border-t border-slate-100 flex flex-col gap-2">
-          <div class="flex gap-1.5">
-            <select id="quickAddEtfSelect" class="flex-1 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+        <div class="pt-2 border-t border-slate-100 flex flex-col gap-2.5">
+          <div class="flex gap-1.5 min-w-0">
+            <select id="quickAddEtfSelect" class="flex-1 min-w-0 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
             <button id="btnQuickAddEtf" type="button" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shrink-0 transition">
               + 추가
             </button>
           </div>
+
+          <!-- ★ Direct Custom Ticker Auto-Fetch Box (Yahoo Finance 실시간 종목명 + 월별/일별 시계열 자동 수집) -->
+          <div class="p-3 rounded-xl bg-gradient-to-br from-indigo-50/80 via-blue-50/60 to-violet-50/70 border border-indigo-200/90 space-y-2">
+            <div class="flex items-center justify-between gap-1 flex-wrap">
+              <span class="text-[11px] font-extrabold text-indigo-950 flex items-center gap-1">
+                ✨ 티커 입력 자동조회 &amp; 신규 자산 추가 (일별·월별 데이터 자동생성)
+              </span>
+              <span id="customFetchStatusBadge" class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[10px] font-bold num-font">
+                Yahoo Finance 연동
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-600 leading-relaxed">
+              미국 티커(예: <code class="font-bold text-indigo-700">SMH</code>, <code class="font-bold text-indigo-700">NVDA</code>, <code class="font-bold text-indigo-700">VOO</code>, <code class="font-bold text-indigo-700">SCHG</code>) 또는 한국 6자리 종목코드(예: <code class="font-bold text-indigo-700">379800</code>, <code class="font-bold text-indigo-700">005930</code>)를 입력하면 종목명과 2010년~현재 월별·일별 주가를 자동으로 가져옵니다.
+            </p>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input id="quickCustomTicker" type="text" placeholder="티커 입력 (예: SMH, 379800)"
+                class="w-full px-2.5 py-1.5 text-xs font-bold uppercase num-font bg-white border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input id="quickCustomName" type="text" placeholder="종목명 (비워두면 자동조회)"
+                class="w-full px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="flex items-center gap-1.5 min-w-0">
+              <select id="quickCustomProxy" class="flex-1 min-w-0 px-2 py-1.5 text-[11px] font-semibold bg-white border border-slate-300 rounded-lg text-slate-700" title="상장 이전 기간(Pre-IPO) 또는 오프라인 시 연동할 기초자산">
+                <option value="QQQ" selected>상장전 연동: 나스닥100 (QQQ)</option>
+                <option value="SPY">상장전 연동: 미국 S&amp;P500 (SPY)</option>
+                <option value="SOXX">상장전 연동: 미국 반도체 (SOXX)</option>
+                <option value="QLD">상장전 연동: 나스닥 2배 (QLD)</option>
+                <option value="TQQQ">상장전 연동: 나스닥 3배 (TQQQ)</option>
+                <option value="SOXL">상장전 연동: 반도체 3배 (SOXL)</option>
+                <option value="TLT">상장전 연동: 미국 장기채 (TLT)</option>
+                <option value="KR_KODEX_200">상장전 연동: 한국 코스피200</option>
+                <option value="GLD">상장전 연동: 금 현물 (GLD)</option>
+              </select>
+              <button id="btnQuickFetchCustomEtf" type="button" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-lg shadow-sm shrink-0 transition flex items-center gap-1">
+                <span>🔍 자동조회·추가</span>
+              </button>
+            </div>
+            <div class="flex items-center justify-between gap-1.5 pt-1 border-t border-indigo-200/60">
+              <span class="text-[10px] text-indigo-900 font-medium">추가한 커스텀 종목을 GitHub·파이썬에 영구 연동:</span>
+              <button id="btnExportUpdatedStockDataJs" type="button" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg shadow-xs shrink-0 transition">
+                📥 stock_data.js 다운로드
+              </button>
+            </div>
+          </div>
+
           <button id="btnOpenCatalogBottom" type="button" class="w-full py-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/40 hover:bg-blue-50 text-blue-600 text-xs font-semibold transition flex items-center justify-center gap-1.5">
-            <span>🔍 전체 미국·한국 ETF 카탈로그 및 커스텀 자산 추가</span>
+            <span>🔍 전체 미국·한국 ETF 카탈로그 및 커스텀 자산 관리</span>
           </button>
         </div>
       </section>
@@ -1516,10 +1560,13 @@
 
       <!-- Custom ETF Creator Accordion in Modal Footer -->
       <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
-        <div class="text-xs font-bold text-slate-700">➕ 직접 커스텀 ETF / 자산 만들어서 추가하기</div>
+        <div class="flex items-center justify-between flex-wrap gap-1">
+          <div class="text-xs font-bold text-slate-700">➕ 티커 입력으로 커스텀 ETF / 개별주 자동 조회 및 추가 (월별·일별 데이터 자동 생성)</div>
+          <span class="text-[10px] text-indigo-600 font-semibold">종목명을 비워두면 Yahoo Finance에서 자동 조회합니다</span>
+        </div>
         <div class="grid grid-cols-2 sm:grid-cols-6 gap-2">
-          <input id="customTicker" type="text" placeholder="티커 (예: SOXL)" class="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white" />
-          <input id="customName" type="text" placeholder="종목명 (예: 반도체 3X)" class="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white sm:col-span-2" />
+          <input id="customTicker" type="text" placeholder="티커 (예: SMH, 379800)" class="px-2.5 py-1.5 text-xs font-bold uppercase border border-slate-300 rounded-lg bg-white" />
+          <input id="customName" type="text" placeholder="종목명 (비워두면 자동조회)" class="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white sm:col-span-2" />
           <select id="customMarket" class="px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium">
             <option value="US">🇺🇸 미국 ETF (USD 환전)</option>
             <option value="KR">🇰🇷 한국 ETF (KRW 원화)</option>
@@ -2591,13 +2638,31 @@
 
     function populateQuickAddDropdown() {
       const sel = document.getElementById('quickAddEtfSelect');
-      sel.innerHTML = '';
-      Object.values(MARKET_DB.etfs).forEach(etf => {
-        const flag = etf.market === 'US' ? '🇺🇸 [미국/달러환전]' : '🇰🇷 [한국/원화]';
-        const opt = document.createElement('option');
-        opt.value = etf.id;
-        opt.textContent = `${flag} ${etf.name} (${etf.ticker})`;
-        sel.appendChild(opt);
+      if (sel) {
+        sel.innerHTML = '';
+        Object.values(MARKET_DB.etfs).forEach(etf => {
+          if (etf.id === 'CASH_KRW_0' || etf.id === 'CASH_USD_0') return;
+          const flag = etf.market === 'US' ? '🇺🇸 [미국/달러환전]' : '🇰🇷 [한국/원화]';
+          const opt = document.createElement('option');
+          opt.value = etf.id;
+          opt.textContent = `${flag} ${etf.name} (${etf.ticker})`;
+          sel.appendChild(opt);
+        });
+      }
+      // Sync custom ETFs into Reference Asset (#selectRefAsset), Leverage Asset (#selectLevAsset), and Benchmark (#selectBenchmark)
+      ['selectRefAsset', 'selectLevAsset', 'selectBenchmark'].forEach(selId => {
+        const el = document.getElementById(selId);
+        if (!el) return;
+        const existingVals = new Set(Array.from(el.options).map(o => o.value));
+        Object.values(MARKET_DB.etfs).forEach(etf => {
+          if (etf.id.startsWith('CUSTOM_') && !existingVals.has(etf.id)) {
+            const flag = etf.market === 'US' ? '🇺🇸' : '🇰🇷';
+            const opt = document.createElement('option');
+            opt.value = etf.id;
+            opt.textContent = `${flag} [커스텀] ${etf.name} (${etf.ticker})`;
+            el.appendChild(opt);
+          }
+        });
       });
     }
 
@@ -8371,44 +8436,362 @@ if __name__ == "__main__":
         renderCatalogModalList();
       });
 
-      document.getElementById('btnAddCustomEtf').addEventListener('click', () => {
-        const ticker = document.getElementById('customTicker').value.trim().toUpperCase();
-        const name = document.getElementById('customName').value.trim();
-        const market = document.getElementById('customMarket').value;
-        const baseId = document.getElementById('customStyle').value;
-
-        if (!ticker || !name) {
-          showToast('커스텀 ETF의 티커와 종목명을 모두 입력해 주세요.');
-          return;
+      // ★ Yahoo Finance v8 Chart Auto-Fetcher & Full 2010~Present Daily/Monthly Builder for Custom Tickers
+      async function fetchYahooChartDataWithFallback(yfSymbol) {
+        const nowSec = Math.floor(Date.now() / 1000) + 86400;
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yfSymbol)}?period1=1262304000&period2=${nowSec}&interval=1d&includeAdjustedClose=true`;
+        const candidates = [
+          targetUrl,
+          `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+        ];
+        for (let i = 0; i < candidates.length; i++) {
+          try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 8000);
+            const resp = await fetch(candidates[i], { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!resp.ok) continue;
+            const json = await resp.json();
+            const res = json && json.chart && json.chart.result && json.chart.result[0];
+            if (res && res.timestamp && res.timestamp.length > 5) {
+              return res;
+            }
+          } catch (e) {}
         }
-        const newId = 'CUSTOM_' + ticker.replace(/[^A-Z0-9]/g, '');
-        const baseEtf = MARKET_DB.etfs[baseId] || MARKET_DB.etfs['SPY'];
+        return null;
+      }
+
+      async function createAndRegisterCustomEtf({ rawTicker, rawName, marketHint, proxyId, statusBadgeEl }) {
+        const cleanInput = (rawTicker || '').trim().toUpperCase();
+        if (!cleanInput) {
+          showToast('⚠️ 추가할 종목의 티커(예: SMH, NVDA, 379800)를 입력해 주세요.');
+          return false;
+        }
+
+        // Detect Korean 6-digit code vs US ticker
+        const isKrCode = /^\d{6}(\.(KS|KQ))?$/.test(cleanInput);
+        const baseTicker = cleanInput.replace(/\.(KS|KQ)$/, '');
+        const market = isKrCode ? 'KR' : (marketHint || 'US');
+        const currency = market === 'US' ? 'USD' : 'KRW';
+        const yfSymbol = isKrCode
+          ? (cleanInput.includes('.') ? cleanInput : `${baseTicker}.KS`)
+          : cleanInput;
+
+        // Check if already exists in built-in catalog
+        const existingBuiltin = Object.values(MARKET_DB.etfs).find(
+          e => e.ticker.toUpperCase() === baseTicker || e.id.toUpperCase() === baseTicker
+        );
+        if (existingBuiltin && !existingBuiltin.id.startsWith('CUSTOM_')) {
+          if (!state.portfolio.some(p => p.id === existingBuiltin.id)) {
+            state.portfolio.push({ id: existingBuiltin.id, weight: 10, maPeriod: 60 });
+            renderPortfolioEditor();
+            runBacktest();
+            saveUserSettingsToStorage();
+          }
+          showToast(`✅ 이미 내장된 [${existingBuiltin.name} (${existingBuiltin.ticker})] 종목을 포트폴리오에 추가했습니다.`);
+          return true;
+        }
+
+        const newId = 'CUSTOM_' + baseTicker.replace(/[^A-Z0-9]/g, '');
+        const proxyEtf = MARKET_DB.etfs[proxyId] || MARKET_DB.etfs[market === 'KR' ? 'KR_KODEX_200' : 'QQQ'] || MARKET_DB.etfs['SPY'];
+        const proxyDaily = (REAL_DAILY_DB && REAL_DAILY_DB.etfs && REAL_DAILY_DB.etfs[proxyEtf.id])
+          ? REAL_DAILY_DB.etfs[proxyEtf.id]
+          : [];
+
+        if (statusBadgeEl) {
+          statusBadgeEl.textContent = `⏳ ${yfSymbol} 시세 조회중...`;
+          statusBadgeEl.className = 'px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold num-font animate-pulse';
+        }
+        showToast(`🔍 Yahoo Finance에서 [${yfSymbol}] 종목명 및 일별·월별 주가 데이터를 조회 중입니다...`);
+
+        let yfResult = await fetchYahooChartDataWithFallback(yfSymbol);
+        if (!yfResult && isKrCode && yfSymbol.endsWith('.KS')) {
+          yfResult = await fetchYahooChartDataWithFallback(`${baseTicker}.KQ`);
+        }
+
+        const allDates = (REAL_DAILY_DB && REAL_DAILY_DB.dates) ? REAL_DAILY_DB.dates : [];
+        let resolvedName = (rawName || '').trim();
+        let dailySeries = [];
+        let monthPrices = [];
+        let monthReturns = [];
+        let dataSourceNote = '';
+
+        if (yfResult && yfResult.timestamp && allDates.length > 0) {
+          const meta = yfResult.meta || {};
+          if (!resolvedName) {
+            resolvedName = meta.longName || meta.shortName || meta.symbol || baseTicker;
+          }
+          const timestamps = yfResult.timestamp || [];
+          const quote = (yfResult.indicators && yfResult.indicators.quote && yfResult.indicators.quote[0]) || {};
+          const closes = quote.close || [];
+
+          const yfDateMap = {};
+          let firstYfDate = null;
+          let firstYfPrice = null;
+          for (let i = 0; i < timestamps.length; i++) {
+            const c = closes[i];
+            if (c !== null && c !== undefined && !isNaN(c) && c > 0) {
+              const dt = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+              yfDateMap[dt] = currency === 'USD' ? +Number(c).toFixed(2) : Math.round(Number(c));
+              if (!firstYfDate || dt < firstYfDate) {
+                firstYfDate = dt;
+                firstYfPrice = yfDateMap[dt];
+              }
+            }
+          }
+
+          if (firstYfDate && firstYfPrice > 0) {
+            // Find proxy price at firstYfDate to back-cast Pre-IPO period seamlessly
+            let firstIdxInAll = 0;
+            for (let i = 0; i < allDates.length; i++) {
+              if (allDates[i] >= firstYfDate) {
+                firstIdxInAll = i;
+                break;
+              }
+            }
+            const proxyAnchorP = (proxyDaily[firstIdxInAll] && proxyDaily[firstIdxInAll] > 0) ? proxyDaily[firstIdxInAll] : 100;
+            const scalePreIpo = firstYfPrice / proxyAnchorP;
+
+            let lastVal = firstYfPrice;
+            for (let i = 0; i < allDates.length; i++) {
+              const dStr = allDates[i];
+              if (dStr < firstYfDate) {
+                const pProxy = proxyDaily[i] || proxyAnchorP;
+                const backVal = pProxy * scalePreIpo;
+                dailySeries.push(currency === 'USD' ? +Math.max(0.01, backVal).toFixed(2) : Math.max(10, Math.round(backVal)));
+              } else {
+                if (yfDateMap[dStr] !== undefined && yfDateMap[dStr] > 0) {
+                  lastVal = yfDateMap[dStr];
+                }
+                dailySeries.push(lastVal);
+              }
+            }
+
+            // Build monthly MARKET_DB prices & returns from dailySeries
+            const mEndMap = (REAL_DAILY_DB && REAL_DAILY_DB.monthEndIdx) ? REAL_DAILY_DB.monthEndIdx : {};
+            const divM = ((proxyEtf.divYield || 0) / 100.0) / 12.0;
+            for (let m = 0; m < MARKET_DB.months.length; m++) {
+              const ym = MARKET_DB.months[m];
+              const dIdx = mEndMap[ym] !== undefined ? mEndMap[ym] : Math.min(dailySeries.length - 1, Math.round(((m + 1) / MARKET_DB.months.length) * (dailySeries.length - 1)));
+              const pVal = dailySeries[Math.max(0, Math.min(dailySeries.length - 1, dIdx))];
+              monthPrices.push(pVal);
+              if (m === 0) {
+                monthReturns.push(0.0);
+              } else {
+                const prevP = monthPrices[m - 1];
+                const rawRet = prevP > 0 ? ((pVal / prevP) - 1.0) : 0.0;
+                monthReturns.push(+(rawRet + divM).toFixed(5));
+              }
+            }
+            const latestP = dailySeries[dailySeries.length - 1];
+            const fmtLatest = currency === 'USD' ? `$${latestP}` : `₩${latestP.toLocaleString()}`;
+            dataSourceNote = `Yahoo Finance 실데이터 연동 (${firstYfDate} 상장 ~ 현재가 ${fmtLatest}, 상장전 ${proxyEtf.ticker} 연동)`;
+            if (statusBadgeEl) {
+              statusBadgeEl.textContent = `✅ ${baseTicker} 실데이터 반영 (${fmtLatest})`;
+              statusBadgeEl.className = 'px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold num-font';
+            }
+          }
+        }
+
+        // Fallback to proxy series if offline or ticker not found on Yahoo Finance
+        if (dailySeries.length === 0 || monthPrices.length === 0) {
+          if (!resolvedName) resolvedName = `${baseTicker} (커스텀 ETF)`;
+          dailySeries = proxyDaily.slice();
+          monthPrices = proxyEtf.prices ? proxyEtf.prices.slice() : [];
+          monthReturns = proxyEtf.returns ? proxyEtf.returns.slice() : [];
+          dataSourceNote = `오프라인/프록시 연동 (${proxyEtf.name} 수익률 기반 · update_data.py 실행 시 실데이터 갱신)`;
+          if (statusBadgeEl) {
+            statusBadgeEl.textContent = `⚠️ 프록시 연동 (${proxyEtf.ticker})`;
+            statusBadgeEl.className = 'px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold num-font';
+          }
+        }
 
         MARKET_DB.etfs[newId] = {
           id: newId,
-          ticker,
-          name,
+          ticker: baseTicker,
+          yfTicker: yfSymbol,
+          proxyId: proxyEtf.id,
+          name: resolvedName,
           market,
-          currency: market === 'US' ? 'USD' : 'KRW',
-          category: market === 'US' ? '커스텀 (미국 ETF)' : '커스텀 (한국 ETF)',
+          currency,
+          category: market === 'US' ? '커스텀 (미국 ETF/주식)' : '커스텀 (한국 ETF/주식)',
           fxType: market === 'US' ? 'USD 직접투자 (환전)' : '원화 고유자산',
           expense: 0.15,
-          divYield: baseEtf.divYield,
-          desc: `사용자 정의 커스텀 ETF (${baseEtf.name} 수익률 특성 기반)`,
-          embedFx: false,
-          prices: baseEtf.prices ? baseEtf.prices.slice() : [],
-          returns: baseEtf.returns.slice()
+          divYield: proxyEtf.divYield || 0.5,
+          desc: dataSourceNote,
+          embedFx: market === 'KR' && proxyEtf.embedFx ? true : false,
+          prices: monthPrices,
+          returns: monthReturns
         };
 
+        if (REAL_DAILY_DB && REAL_DAILY_DB.etfs) {
+          REAL_DAILY_DB.etfs[newId] = dailySeries;
+        }
+        FULL_DAILY_CACHE = null;
+
         populateQuickAddDropdown();
-        state.portfolio.push({ id: newId, weight: 10 });
-        document.getElementById('customTicker').value = '';
-        document.getElementById('customName').value = '';
+        if (!state.portfolio.some(p => p.id === newId)) {
+          state.portfolio.push({ id: newId, weight: 10, maPeriod: 60 });
+        }
         renderCatalogModalList();
         renderPortfolioEditor();
         runBacktest();
-        showToast(`커스텀 자산 [${name} (${ticker})]이 추가되었습니다.`);
+        saveUserSettingsToStorage();
+        showToast(`✅ [${resolvedName} (${baseTicker})] 월별(${monthPrices.length}개월)·일별(${dailySeries.length.toLocaleString()}일) 데이터가 반영되었습니다!`);
+        return true;
+      }
+
+      window.refreshSavedCustomEtfsInBackground = async function(customKeys) {
+        let anyUpdated = false;
+        for (let i = 0; i < customKeys.length; i++) {
+          const k = customKeys[i];
+          const etf = MARKET_DB.etfs[k];
+          if (!etf) continue;
+          const yfSym = etf.yfTicker || etf.ticker;
+          const yfResult = await fetchYahooChartDataWithFallback(yfSym);
+          if (!yfResult || !yfResult.timestamp) continue;
+          const allDates = (REAL_DAILY_DB && REAL_DAILY_DB.dates) ? REAL_DAILY_DB.dates : [];
+          if (!allDates.length) continue;
+
+          const timestamps = yfResult.timestamp || [];
+          const quote = (yfResult.indicators && yfResult.indicators.quote && yfResult.indicators.quote[0]) || {};
+          const closes = quote.close || [];
+          const yfDateMap = {};
+          let firstYfDate = null;
+          let firstYfPrice = null;
+          for (let j = 0; j < timestamps.length; j++) {
+            const c = closes[j];
+            if (c !== null && c !== undefined && !isNaN(c) && c > 0) {
+              const dt = new Date(timestamps[j] * 1000).toISOString().slice(0, 10);
+              yfDateMap[dt] = etf.currency === 'USD' ? +Number(c).toFixed(2) : Math.round(Number(c));
+              if (!firstYfDate || dt < firstYfDate) {
+                firstYfDate = dt;
+                firstYfPrice = yfDateMap[dt];
+              }
+            }
+          }
+          if (!firstYfDate || !firstYfPrice) continue;
+
+          const proxyEtf = MARKET_DB.etfs[etf.proxyId || 'QQQ'] || MARKET_DB.etfs['SPY'];
+          const proxyDaily = REAL_DAILY_DB.etfs[proxyEtf.id] || [];
+          let firstIdxInAll = 0;
+          for (let j = 0; j < allDates.length; j++) {
+            if (allDates[j] >= firstYfDate) { firstIdxInAll = j; break; }
+          }
+          const proxyAnchorP = proxyDaily[firstIdxInAll] || 100;
+          const scalePreIpo = firstYfPrice / proxyAnchorP;
+
+          const dailySeries = [];
+          let lastVal = firstYfPrice;
+          for (let j = 0; j < allDates.length; j++) {
+            const dStr = allDates[j];
+            if (dStr < firstYfDate) {
+              const backVal = (proxyDaily[j] || proxyAnchorP) * scalePreIpo;
+              dailySeries.push(etf.currency === 'USD' ? +Math.max(0.01, backVal).toFixed(2) : Math.max(10, Math.round(backVal)));
+            } else {
+              if (yfDateMap[dStr] !== undefined && yfDateMap[dStr] > 0) lastVal = yfDateMap[dStr];
+              dailySeries.push(lastVal);
+            }
+          }
+
+          const mEndMap = REAL_DAILY_DB.monthEndIdx || {};
+          const divM = ((etf.divYield || 0) / 100.0) / 12.0;
+          const monthPrices = [];
+          const monthReturns = [];
+          for (let m = 0; m < MARKET_DB.months.length; m++) {
+            const ym = MARKET_DB.months[m];
+            const dIdx = mEndMap[ym] !== undefined ? mEndMap[ym] : (dailySeries.length - 1);
+            const pVal = dailySeries[Math.max(0, Math.min(dailySeries.length - 1, dIdx))];
+            monthPrices.push(pVal);
+            if (m === 0) monthReturns.push(0.0);
+            else {
+              const prevP = monthPrices[m - 1];
+              monthReturns.push(+(((prevP > 0 ? (pVal / prevP - 1.0) : 0.0)) + divM).toFixed(5));
+            }
+          }
+          etf.prices = monthPrices;
+          etf.returns = monthReturns;
+          REAL_DAILY_DB.etfs[k] = dailySeries;
+          anyUpdated = true;
+        }
+        if (anyUpdated) {
+          FULL_DAILY_CACHE = null;
+          runBacktest();
+          saveUserSettingsToStorage();
+        }
+      };
+
+      function exportUpdatedStockDataJs() {
+        const jsContent =
+          `/**\n` +
+          ` * ST Quant BackTester - Local Base Dataset (stock_data.js)\n` +
+          ` * 기준일(asOfDate): ${MARKET_DB.asOfDate}\n` +
+          ` * 수록 종목 수: ${Object.keys(MARKET_DB.etfs).length}종 (커스텀 추가 종목 포함)\n` +
+          ` */\n\n` +
+          `var MARKET_DB = ${JSON.stringify(MARKET_DB)};\n\n` +
+          `var REAL_DAILY_DB = ${JSON.stringify(REAL_DAILY_DB)};\n\n` +
+          `if (typeof window !== 'undefined') {\n` +
+          `  window.MARKET_DB = MARKET_DB;\n` +
+          `  window.REAL_DAILY_DB = REAL_DAILY_DB;\n` +
+          `}\n` +
+          `if (typeof module !== 'undefined' && module.exports) {\n` +
+          `  module.exports = { MARKET_DB, REAL_DAILY_DB };\n` +
+          `}\n`;
+        const blob = new Blob([jsContent], { type: 'application/javascript;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'stock_data.js';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('📥 커스텀 종목의 월별·일별 데이터가 포함된 stock_data.js 파일이 다운로드되었습니다!');
+      }
+
+      document.getElementById('btnAddCustomEtf').addEventListener('click', async () => {
+        const ticker = document.getElementById('customTicker').value.trim();
+        const name = document.getElementById('customName').value.trim();
+        const market = document.getElementById('customMarket').value;
+        const baseId = document.getElementById('customStyle').value;
+        const ok = await createAndRegisterCustomEtf({
+          rawTicker: ticker,
+          rawName: name,
+          marketHint: market,
+          proxyId: baseId,
+          statusBadgeEl: document.getElementById('customFetchStatusBadge')
+        });
+        if (ok) {
+          document.getElementById('customTicker').value = '';
+          document.getElementById('customName').value = '';
+        }
       });
+
+      const btnQuickFetch = document.getElementById('btnQuickFetchCustomEtf');
+      if (btnQuickFetch) {
+        btnQuickFetch.addEventListener('click', async () => {
+          const ticker = document.getElementById('quickCustomTicker').value.trim();
+          const name = document.getElementById('quickCustomName').value.trim();
+          const proxyId = document.getElementById('quickCustomProxy').value;
+          const ok = await createAndRegisterCustomEtf({
+            rawTicker: ticker,
+            rawName: name,
+            marketHint: null,
+            proxyId,
+            statusBadgeEl: document.getElementById('customFetchStatusBadge')
+          });
+          if (ok) {
+            document.getElementById('quickCustomTicker').value = '';
+            document.getElementById('quickCustomName').value = '';
+          }
+        });
+      }
+
+      const btnExportSd = document.getElementById('btnExportUpdatedStockDataJs');
+      if (btnExportSd) {
+        btnExportSd.addEventListener('click', exportUpdatedStockDataJs);
+      }
 
       // Trade History Filter Buttons (ALL / CORE / LEV / REBAL)
       document.querySelectorAll('.hist-filter-btn').forEach(btn => {
@@ -8915,9 +9298,13 @@ if __name__ == "__main__":
 
     function buildPersistableStatePayload() {
       const customEtfs = {};
+      const customDailyEtfs = {};
       Object.keys(MARKET_DB.etfs).forEach(k => {
         if (k.startsWith('CUSTOM_')) {
           customEtfs[k] = MARKET_DB.etfs[k];
+          if (REAL_DAILY_DB && REAL_DAILY_DB.etfs && REAL_DAILY_DB.etfs[k]) {
+            customDailyEtfs[k] = REAL_DAILY_DB.etfs[k];
+          }
         }
       });
       return {
@@ -8957,6 +9344,7 @@ if __name__ == "__main__":
         tradeHistorySort: state.tradeHistorySort,
         portfolio: JSON.parse(JSON.stringify(state.portfolio)),
         customEtfs,
+        customDailyEtfs,
         tgBotToken: document.getElementById('inputTgBotToken')?.value || '',
         tgChatId: document.getElementById('inputTgChatId')?.value || ''
       };
@@ -9091,9 +9479,32 @@ if __name__ == "__main__":
         }
 
         if (saved.customEtfs && typeof saved.customEtfs === 'object') {
+          const targetDayLen = (REAL_DAILY_DB && REAL_DAILY_DB.dates) ? REAL_DAILY_DB.dates.length : 0;
+          const targetMonthLen = (MARKET_DB && MARKET_DB.months) ? MARKET_DB.months.length : 0;
           Object.keys(saved.customEtfs).forEach(k => {
-            MARKET_DB.etfs[k] = saved.customEtfs[k];
+            const cEtf = saved.customEtfs[k];
+            // Pad monthly prices/returns if base stock_data.js gained new months via GitHub Actions
+            if (cEtf.prices && cEtf.prices.length < targetMonthLen) {
+              const lastP = cEtf.prices[cEtf.prices.length - 1] || 100;
+              while (cEtf.prices.length < targetMonthLen) cEtf.prices.push(lastP);
+              while (cEtf.returns.length < targetMonthLen) cEtf.returns.push(0.0);
+            }
+            MARKET_DB.etfs[k] = cEtf;
+            if (REAL_DAILY_DB && REAL_DAILY_DB.etfs) {
+              if (saved.customDailyEtfs && Array.isArray(saved.customDailyEtfs[k]) && saved.customDailyEtfs[k].length > 0) {
+                const dArr = saved.customDailyEtfs[k].slice();
+                const lastD = dArr[dArr.length - 1] || 100;
+                while (dArr.length < targetDayLen) dArr.push(lastD);
+                if (dArr.length > targetDayLen) dArr.length = targetDayLen;
+                REAL_DAILY_DB.etfs[k] = dArr;
+              } else {
+                const pId = cEtf.proxyId || 'QQQ';
+                REAL_DAILY_DB.etfs[k] = (REAL_DAILY_DB.etfs[pId] || REAL_DAILY_DB.etfs['SPY']).slice();
+              }
+            }
           });
+          FULL_DAILY_CACHE = null;
+          populateQuickAddDropdown();
         }
 
         const keys = [
@@ -9231,6 +9642,14 @@ if __name__ == "__main__":
       bindEvents();
       bindPersistenceExtraControls();
       runBacktest();
+
+      // ★ 스마트폰/브라우저 기기 내 저장된 커스텀 종목(CUSTOM_*)을 앱 실행 시 백그라운드에서 최신 Yahoo Finance 시세로 자동 동기화
+      setTimeout(async () => {
+        const customKeys = Object.keys(MARKET_DB.etfs).filter(k => k.startsWith('CUSTOM_'));
+        if (customKeys.length > 0 && typeof window.refreshSavedCustomEtfsInBackground === 'function') {
+          await window.refreshSavedCustomEtfsInBackground(customKeys);
+        }
+      }, 600);
     }
 
     if (document.readyState === 'loading') {

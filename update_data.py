@@ -41,6 +41,10 @@ from typing import Dict, List, Optional, Tuple
 
 DEFAULT_START_DATE = "2010-01-01"
 
+# ★ 사용자가 파이썬에서 직접 추가하고 싶은 커스텀 티커 목록 (예: ["SMH", "NVDA", "VOO", "379800.KS"])
+# 웹앱(index.html)에서 추가 후 다운로드한 stock_data.js의 CUSTOM_* 종목도 자동으로 인식·갱신됩니다.
+USER_CUSTOM_TICKERS: List[str] = []
+
 # 38개 핵심 ETF (+ 현금 2종 = 총 40종) 메타데이터 및 Yahoo Finance 티커 매핑
 ETF_CATALOG_SPEC: Dict[str, Dict] = {
     # ── [미국 상장 ETF: 20종] ──
@@ -215,10 +219,177 @@ def normalize_soxx_split_in_db(mdb: Dict, rdb: Dict) -> None:
                     arr[i] = arr[i - 1]
 
 
+def register_and_backfill_custom_tickers(
+    custom_tickers: List[str],
+    updated_mdb: Dict,
+    updated_rdb: Dict,
+) -> None:
+    """
+    --add-ticker 옵션이나 USER_CUSTOM_TICKERS, 또는 stock_data.js 내 오프라인 프록시 상태인 CUSTOM_* 종목에 대해
+    Yahoo Finance에서 종목명과 2010-01-01 ~ 현재까지의 전체 일별(REAL_DAILY_DB)·월별(MARKET_DB) 데이터를 수집해 채워 넣습니다.
+    """
+    try:
+        import pandas as pd
+        import yfinance as yf
+    except ImportError:
+        return
+
+    all_dates: List[str] = updated_rdb.get("dates", [])
+    m_end_map: Dict[str, int] = updated_rdb.get("monthEndIdx", {})
+    months: List[str] = updated_mdb.get("months", [])
+    if not all_dates or not months:
+        return
+
+    # 1) CLI / USER_CUSTOM_TICKERS를 MARKET_DB에 등록
+    targets: List[Tuple[str, str, str]] = []  # (etf_id, yf_symbol, proxy_id)
+    for raw_tk in custom_tickers:
+        clean_tk = raw_tk.strip().upper()
+        if not clean_tk:
+            continue
+        is_kr = bool(re.match(r"^\d{6}(\.(KS|KQ))?$", clean_tk))
+        base_tk = re.sub(r"\.(KS|KQ)$", "", clean_tk)
+        yf_sym = clean_tk if ("." in clean_tk or not is_kr) else f"{base_tk}.KS"
+        etf_id = "CUSTOM_" + re.sub(r"[^A-Z0-9]", "", base_tk)
+        proxy_id = "KR_KODEX_200" if is_kr else "QQQ"
+        targets.append((etf_id, yf_sym, proxy_id))
+
+    # 2) 이미 stock_data.js에 들어있는 CUSTOM_* 종목도 확인하여 오프라인 프록시 상태이면 전체 히스토리 백필 대상에 포함
+    for etf_id, etf_obj in list(updated_mdb.get("etfs", {}).items()):
+        if etf_id.startswith("CUSTOM_"):
+            yf_sym = etf_obj.get("yfTicker") or etf_obj.get("ticker") or etf_id.replace("CUSTOM_", "")
+            if re.match(r"^\d{6}$", yf_sym):
+                yf_sym = f"{yf_sym}.KS"
+            proxy_id = etf_obj.get("proxyId") or ("KR_KODEX_200" if etf_obj.get("market") == "KR" else "QQQ")
+            # 항상 최신 심볼 스펙을 ETF_CATALOG_SPEC에 동적 등록하여 일일 증분 업데이트도 함께 받도록 함
+            ETF_CATALOG_SPEC[etf_id] = {
+                "ticker": etf_obj.get("ticker", yf_sym),
+                "yf": yf_sym,
+                "market": etf_obj.get("market", "KR" if yf_sym.endswith((".KS", ".KQ")) else "US"),
+                "currency": etf_obj.get("currency", "KRW" if yf_sym.endswith((".KS", ".KQ")) else "USD"),
+                "divYield": float(etf_obj.get("divYield", 0.5)),
+                "proxy": proxy_id,
+                "beta": 1.0,
+                "embedFx": bool(etf_obj.get("embedFx", False)),
+            }
+            if "오프라인/프록시" in etf_obj.get("desc", ""):
+                if not any(x[0] == etf_id for x in targets):
+                    targets.append((etf_id, yf_sym, proxy_id))
+
+    for etf_id, yf_sym, proxy_id in targets:
+        print(f"  -> [커스텀 종목 전체 시계열 수집] {etf_id} ({yf_sym}) 조회 중...")
+        is_kr = yf_sym.endswith((".KS", ".KQ"))
+        market = "KR" if is_kr else "US"
+        currency = "KRW" if is_kr else "USD"
+        base_tk = re.sub(r"\.(KS|KQ)$", "", yf_sym)
+
+        try:
+            tk_obj = yf.Ticker(yf_sym)
+            hist = tk_obj.history(start="2010-01-01", auto_adjust=False)
+            if hist.empty and is_kr and yf_sym.endswith(".KS"):
+                yf_sym = f"{base_tk}.KQ"
+                tk_obj = yf.Ticker(yf_sym)
+                hist = tk_obj.history(start="2010-01-01", auto_adjust=False)
+            if hist.empty:
+                print(f"  ⚠️ [{yf_sym}] Yahoo Finance 데이터가 비어 있어 건너뜁니다.")
+                continue
+
+            idx_dt = pd.to_datetime(hist.index)
+            if getattr(idx_dt, "tz", None) is not None:
+                idx_dt = idx_dt.tz_convert("UTC").tz_localize(None)
+            hist.index = idx_dt.strftime("%Y-%m-%d")
+            s_close = hist["Close"].dropna()
+            s_close = s_close[~s_close.index.duplicated(keep="last")].sort_index()
+            if s_close.empty:
+                continue
+
+            # 종목명 자동 추출
+            existing_obj = updated_mdb["etfs"].get(etf_id, {})
+            resolved_name = existing_obj.get("name") or ""
+            if not resolved_name or resolved_name.endswith("(커스텀 ETF)"):
+                try:
+                    info = tk_obj.info or {}
+                    resolved_name = info.get("longName") or info.get("shortName") or base_tk
+                except Exception:
+                    resolved_name = base_tk
+
+            first_yf_date = str(s_close.index[0])
+            first_yf_price = round_price(float(s_close.iloc[0]), currency == "USD")
+
+            proxy_daily = updated_rdb["etfs"].get(proxy_id) or updated_rdb["etfs"]["SPY"]
+            first_idx = 0
+            for i, d_str in enumerate(all_dates):
+                if d_str >= first_yf_date:
+                    first_idx = i
+                    break
+            proxy_anchor = float(proxy_daily[first_idx]) if proxy_daily[first_idx] > 0 else 100.0
+            scale_pre = first_yf_price / proxy_anchor
+
+            daily_series: List[float] = []
+            last_val = first_yf_price
+            for i, d_str in enumerate(all_dates):
+                if d_str < first_yf_date:
+                    back_v = float(proxy_daily[i]) * scale_pre
+                    daily_series.append(round_price(max(0.01 if currency == "USD" else 10.0, back_v), currency == "USD"))
+                else:
+                    if d_str in s_close and float(s_close[d_str]) > 0:
+                        last_val = round_price(float(s_close[d_str]), currency == "USD")
+                    daily_series.append(last_val)
+
+            month_prices: List[float] = []
+            month_returns: List[float] = []
+            div_yield = float(existing_obj.get("divYield", 0.5))
+            div_m = (div_yield / 100.0) / 12.0
+            for m_i, ym in enumerate(months):
+                d_idx = m_end_map.get(ym, len(daily_series) - 1)
+                p_val = daily_series[min(len(daily_series) - 1, max(0, d_idx))]
+                month_prices.append(p_val)
+                if m_i == 0:
+                    month_returns.append(0.0)
+                else:
+                    prev_p = month_prices[m_i - 1]
+                    raw_r = ((p_val / prev_p) - 1.0) if prev_p > 0 else 0.0
+                    month_returns.append(round(raw_r + div_m, 5))
+
+            latest_p = daily_series[-1]
+            fmt_p = f"${latest_p:.2f}" if currency == "USD" else f"₩{int(latest_p):,}"
+            updated_mdb["etfs"][etf_id] = {
+                "id": etf_id,
+                "ticker": base_tk,
+                "yfTicker": yf_sym,
+                "proxyId": proxy_id,
+                "name": resolved_name,
+                "market": market,
+                "currency": currency,
+                "category": "커스텀 (미국 ETF/주식)" if market == "US" else "커스텀 (한국 ETF/주식)",
+                "fxType": "USD 직접투자 (환전)" if market == "US" else "원화 고유자산",
+                "expense": 0.15,
+                "divYield": div_yield,
+                "desc": f"Yahoo Finance 실데이터 연동 ({first_yf_date} 상장 ~ 현재가 {fmt_p})",
+                "embedFx": False,
+                "prices": month_prices,
+                "returns": month_returns,
+            }
+            updated_rdb["etfs"][etf_id] = daily_series
+            ETF_CATALOG_SPEC[etf_id] = {
+                "ticker": base_tk,
+                "yf": yf_sym,
+                "market": market,
+                "currency": currency,
+                "divYield": div_yield,
+                "proxy": proxy_id,
+                "beta": 1.0,
+                "embedFx": False,
+            }
+            print(f"  ✅ [{resolved_name} ({base_tk})] 월별({len(month_prices)}개월)·일별({len(daily_series):,}일) 실데이터 반영 완료!")
+        except Exception as exc:
+            print(f"  ⚠️ [{yf_sym}] 수집 중 오류 발생: {exc}")
+
+
 def fetch_yfinance_and_update(
     start_date: str,
     base_mdb: Dict,
     base_rdb: Dict,
+    extra_custom_tickers: Optional[List[str]] = None,
 ) -> Tuple[Dict, Dict]:
     """
     기존 stock_data.js의 검증된 베이스 시계열(2010-01-01 ~ base_last_date)을 100% 보존하고,
@@ -247,6 +418,10 @@ def fetch_yfinance_and_update(
     existing_dates: List[str] = updated_rdb.get("dates", [])
     if not existing_dates:
         return updated_mdb, updated_rdb
+
+    # 커스텀 추가 종목(CLI --add-ticker, USER_CUSTOM_TICKERS, stock_data.js 내 CUSTOM_*) 자동 등록 및 백필
+    combined_custom = list(USER_CUSTOM_TICKERS) + (extra_custom_tickers or [])
+    register_and_backfill_custom_tickers(combined_custom, updated_mdb, updated_rdb)
 
     base_last_date = existing_dates[-1]
     today_str = datetime.date.today().strftime("%Y-%m-%d")
@@ -549,6 +724,7 @@ def main() -> None:
     parser.add_argument("--out-js", default="stock_data.js", help="갱신 후 저장할 JS 파일 경로 (기본값: stock_data.js)")
     parser.add_argument("--out-json", default="", help="갱신 후 추가로 저장할 JSON 파일 경로 (선택)")
     parser.add_argument("--verify-only", action="store_true", help="네트워크 호출 없이 로컬 stock_data.js 무결성만 검증")
+    parser.add_argument("--add-ticker", default="", help="신규 추가할 커스텀 티커 (쉼표 구분, 예: SMH,NVDA,379800.KS)")
     parser.add_argument("--write-workflow", action="store_true", help=".github/workflows/update_data.yml 자동 생성")
     args = parser.parse_args()
 
@@ -573,10 +749,12 @@ def main() -> None:
             f"베이스 파일 `{args.base_js}`을(를) 찾을 수 없습니다. 기본 `stock_data.js` 파일과 같은 폴더에서 실행하세요."
         )
 
+    cli_tickers = [x.strip() for x in args.add_ticker.split(",") if x.strip()] if args.add_ticker else []
     updated_mdb, updated_rdb = fetch_yfinance_and_update(
         start_date=args.start_date,
         base_mdb=base_mdb,
         base_rdb=base_rdb,
+        extra_custom_tickers=cli_tickers,
     )
     verify_stock_data_integrity(updated_mdb, updated_rdb)
     write_stock_data_files(
