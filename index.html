@@ -217,8 +217,8 @@
         <button id="btnDownloadStandaloneHtml" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
           <span>💾 독립실행 HTML 다운로드</span>
         </button>
-        <button id="btnOpenPwModal" type="button" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white border border-amber-400/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
-          <span>🔑 비번변경·설정유지</span>
+        <button id="btnOpenPwModal" type="button" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white border border-amber-400/40 text-xs font-bold flex items-center gap-1 shadow-sm transition" title="비밀번호 변경 및 설정 유지">
+          <span>🔑 비번변경</span><span class="hidden sm:inline">·설정유지</span>
         </button>
         <button id="btnLockAppNow" type="button" class="px-2.5 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white border border-rose-500/40 text-xs font-bold flex items-center gap-1 shadow-sm transition" title="즉시 화면 잠금">
           <span>🔒 잠금</span>
@@ -8316,11 +8316,12 @@ if __name__ == "__main__":
     }));
 
     function getEffectiveAppPassword() {
+      const fileDefaultPw = String((typeof MARKET_DB !== 'undefined' && MARKET_DB && MARKET_DB.appPassword) || window.__ST_DEFAULT_PASSWORD || "123456");
       try {
         const customPw = localStorage.getItem(LS_CUSTOM_PW_KEY);
         if (customPw && customPw.length > 0) return customPw;
       } catch (e) {}
-      return String(window.__ST_DEFAULT_PASSWORD || "123456");
+      return fileDefaultPw;
     }
 
     function updatePwModalStatusBadges() {
@@ -8780,7 +8781,7 @@ if __name__ == "__main__":
           if (wasOverlayHidden && overlay) overlay.classList.add('hidden');
 
           rawHtml = rawHtml.replace(
-            /window\.__ST_DEFAULT_PASSWORD\s*=\s*window\.__ST_DEFAULT_PASSWORD\s*\|\|\s*"[^"]*";/,
+            /window\.__ST_DEFAULT_PASSWORD\s*=\s*(?:window\.__ST_DEFAULT_PASSWORD\s*\|\|\s*)?"[^"]*";/,
             `window.__ST_DEFAULT_PASSWORD = "${curPw.replace(/"/g, '\\"')}";`
           );
 
@@ -8874,8 +8875,8 @@ if __name__ == "__main__":
       header .max-w-7xl > div:first-child .flex-wrap > span:not(#headerLiveDateBadge) {
         display: none !important;
       }
-      /* 상단 헤더 우측 버튼 그룹 숨김 (모바일 전용 버튼 및 바텀시트로 대체) */
-      header .max-w-7xl > div:nth-child(2) > button:not(#btnRunBacktestTop):not(#btnLockAppNow) {
+      /* 상단 헤더 우측 버튼 그룹: 모바일에서도 [🔑 비번변경], [🔒 잠금], [▶ 백테스트 실행], [☰ 메뉴] 모두 표시 */
+      header .max-w-7xl > div:nth-child(2) > button:not(#btnRunBacktestTop):not(#btnLockAppNow):not(#btnOpenPwModal):not(#btnMobOpenMoreSheet) {
         display: none !important;
       }
       /* 38개 종목 감사 패널은 모바일에서 기본 접기 처리 */
