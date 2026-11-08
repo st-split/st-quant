@@ -9490,50 +9490,72 @@ if __name__ == "__main__":
         <h2 class="text-sm sm:text-base font-extrabold">🔔 리밸런싱 &amp; 이평선 스위칭 알람</h2>
       </div>
 
-      <!-- 알람 스케줄 설정 카드 -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3.5">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-          <h3 class="text-xs font-extrabold text-slate-900">⏰ 스마트폰 푸시/로컬 알람 스케줄 설정</h3>
-          <button type="button" id="btnTestMobileNotification" class="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold shadow-sm transition">
-            🔔 즉시 테스트 알람 발송
+      <!-- 1. 스마트폰 앱 알림 설정 카드 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <div class="flex items-center gap-2">
+            <h3 class="text-xs font-extrabold text-slate-900">⏰ 1. 스마트폰 알림 설정</h3>
+            <span id="mobNotifPermBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">권한 확인중</span>
+          </div>
+          <button type="button" id="btnTestMobileNotification" class="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-extrabold shadow-sm transition">
+            🔔 알림 권한 허용 &amp; 테스트 발송
           </button>
         </div>
 
-        <div class="space-y-2.5">
-          <label class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+        <div class="space-y-2">
+          <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
             <div>
-              <div class="text-xs font-extrabold text-slate-800">1. 정기 리밸런싱 도래일 알람</div>
-              <div class="text-[11px] text-slate-500" id="alarmRebalCycleDesc">현재 설정 주기(분기별) 첫 영업일 오전 08:30 알림</div>
+              <div class="text-xs font-extrabold text-slate-800">정기 리밸런싱 도래일 알림 (월초)</div>
+              <div class="text-[11px] text-slate-500" id="alarmRebalCycleDesc">설정 주기 월초 첫 영업일 알림</div>
             </div>
             <input id="chkAlarmRegularRebal" type="checkbox" checked class="w-5 h-5 rounded text-blue-600" />
           </label>
 
-          <label class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+          <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
             <div>
-              <div class="text-xs font-extrabold text-slate-800">2. 일간 이평선(MA) 돌파·이탈 시그널 알람</div>
-              <div class="text-[11px] text-slate-500">코어 80% 및 레버리지 20% 이평선 스위칭 발생 시 즉시 알림</div>
+              <div class="text-xs font-extrabold text-slate-800">이평선(MA) 돌파·이탈 &amp; 임박(±2.5%) 알림</div>
+              <div class="text-[11px] text-slate-500">코어·알파 종목 스위칭 발생 또는 접근 시 알림</div>
             </div>
             <input id="chkAlarmMaSwitch" type="checkbox" checked class="w-5 h-5 rounded text-blue-600" />
           </label>
 
-          <label class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+          <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
             <div>
-              <div class="text-xs font-extrabold text-slate-800">3. 계좌 비중 괴리율 임계치(±5%p) 초과 알람</div>
-              <div class="text-[11px] text-slate-500">기록된 내 계좌 자산 비중이 목표치에서 5%p 이상 벗어날 때 알림</div>
+              <div class="text-xs font-extrabold text-slate-800">계좌 비중 괴리율(±5%p) 초과 알림</div>
+              <div class="text-[11px] text-slate-500">목표 비중 대비 5%p 이상 벗어날 때 알림</div>
             </div>
             <input id="chkAlarmDriftExceed" type="checkbox" checked class="w-5 h-5 rounded text-blue-600" />
           </label>
 
-          <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <div class="grid grid-cols-2 gap-2 pt-1">
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1">미국장 마감 체크 시각 (오전)</label>
-              <input id="inputAlarmTimeUs" type="time" value="07:30" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold num-font" />
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">미국장 체크 시각 (오전)</label>
+              <input id="inputAlarmTimeUs" type="time" value="07:30" class="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold num-font" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1">한국장 마감전 체크 시각 (오후)</label>
-              <input id="inputAlarmTimeKr" type="time" value="15:10" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold num-font" />
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">한국장 체크 시각 (오후)</label>
+              <input id="inputAlarmTimeKr" type="time" value="15:10" class="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold num-font" />
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 2. 텔레그램 스마트폰 푸시 연동 카드 (앱이 꺼져 있어도 푸시 수신) -->
+      <div class="bg-white rounded-2xl border-2 border-sky-200 p-4 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between border-b border-sky-100 pb-2">
+          <h3 class="text-xs font-extrabold text-sky-950">✈️ 2. 텔레그램 푸시 알람 연동 (추천)</h3>
+          <span class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[10px] font-bold">앱 종료 시에도 수신</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input id="inputMobAlarmTgToken" type="text" autocomplete="off" spellcheck="false" placeholder="텔레그램 Bot Token (예: 123456:ABC...)"
+            class="w-full px-2.5 py-2 text-xs bg-slate-50 border border-sky-300 rounded-xl num-font focus:outline-none focus:ring-2 focus:ring-sky-500" />
+          <input id="inputMobAlarmTgChatId" type="text" placeholder="텔레그램 Chat ID (예: 987654321)"
+            class="w-full px-2.5 py-2 text-xs bg-slate-50 border border-sky-300 rounded-xl num-font focus:outline-none focus:ring-2 focus:ring-sky-500" />
+        </div>
+        <div class="flex gap-2">
+          <button type="button" id="btnMobSendTelegramTestNow" class="flex-1 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-extrabold shadow-sm transition">
+            ✈️ 지금 내 텔레그램으로 타점·리밸런싱 알람 발송
+          </button>
         </div>
       </div>
 
@@ -10302,27 +10324,140 @@ if __name__ == "__main__":
           }
         });
 
-        // 알람 테스트 버튼 (웹 Notification API & Capacitor LocalNotifications 겸용)
-        document.getElementById('btnTestMobileNotification').addEventListener('click', async () => {
-          const title = '🔔 [ST Quant] 리밸런싱 & 이평선 점검 알람';
-          const body = `기준일 ${MARKET_DB.asOfDate} | 코어 80% + 전술 20% 이평선 시그널 및 목표 수량을 확인하세요.`;
+        // ★ 스마트폰 PWA ServiceWorker 알림 발송 헬퍼 & 알람 설정 자동 저장
+        const defaultAlarmCfg = {
+          regRebal: true,
+          maSwitch: true,
+          driftExceed: true,
+          timeUs: '07:30',
+          timeKr: '15:10',
+          lastFiredKey: ''
+        };
+        let alarmCfg = Object.assign({}, defaultAlarmCfg, JSON.parse(localStorage.getItem(ALARM_STORAGE_KEY) || '{}'));
+        function saveAlarmCfg() {
+          try { localStorage.setItem(ALARM_STORAGE_KEY, JSON.stringify(alarmCfg)); } catch (e) {}
+        }
+        function updateNotifPermBadge() {
+          const b = document.getElementById('mobNotifPermBadge');
+          if (!b) return;
+          if (!('Notification' in window)) {
+            b.textContent = '브라우저 미지원';
+            b.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500';
+          } else if (Notification.permission === 'granted') {
+            b.textContent = '🟢 알림 허용됨';
+            b.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800';
+          } else if (Notification.permission === 'denied') {
+            b.textContent = '🔴 권한 차단됨 (폰 설정에서 허용 필요)';
+            b.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700';
+          } else {
+            b.textContent = '🟡 우측 버튼 눌러 권한 허용';
+            b.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800';
+          }
+        }
+        async function triggerPwaNotification(title, body) {
           if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
             try {
               await window.Capacitor.Plugins.LocalNotifications.requestPermissions();
               await window.Capacitor.Plugins.LocalNotifications.schedule({
-                notifications: [{ id: 101, title, body, schedule: { at: new Date(Date.now() + 1500) } }]
+                notifications: [{ id: Date.now() % 100000, title, body, schedule: { at: new Date(Date.now() + 800) } }]
               });
-              showToast('📲 안드로이드 네이티브 로컬 알람이 예약되었습니다 (1.5초 후 도착).');
-              return;
+              return true;
             } catch (e) {}
           }
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(title, { body });
-          } else if ('Notification' in window && Notification.permission !== 'denied') {
-            Notification.requestPermission().then(p => { if (p === 'granted') new Notification(title, { body }); });
+          if (!('Notification' in window)) return false;
+          let perm = Notification.permission;
+          if (perm === 'default') {
+            perm = await Notification.requestPermission();
           }
-          showToast(body);
+          updateNotifPermBadge();
+          if (perm !== 'granted') return false;
+          try {
+            if ('serviceWorker' in navigator) {
+              const reg = await navigator.serviceWorker.getRegistration();
+              if (reg && typeof reg.showNotification === 'function') {
+                await reg.showNotification(title, {
+                  body,
+                  tag: 'st-quant-alarm',
+                  renotify: true,
+                  vibrate: [200, 100, 200]
+                });
+                return true;
+              }
+            }
+          } catch (e) {}
+          try {
+            new Notification(title, { body });
+            return true;
+          } catch (e) {}
+          return false;
+        }
+
+        // 저장된 알람 설정 복원 및 이벤트 바인딩
+        const chkRegEl = document.getElementById('chkAlarmRegularRebal');
+        const chkMaEl = document.getElementById('chkAlarmMaSwitch');
+        const chkDriftEl = document.getElementById('chkAlarmDriftExceed');
+        const inpTimeUsEl = document.getElementById('inputAlarmTimeUs');
+        const inpTimeKrEl = document.getElementById('inputAlarmTimeKr');
+        if (chkRegEl) { chkRegEl.checked = !!alarmCfg.regRebal; chkRegEl.addEventListener('change', e => { alarmCfg.regRebal = e.target.checked; saveAlarmCfg(); showToast('정기 리밸런싱 알람 설정이 저장되었습니다.'); }); }
+        if (chkMaEl) { chkMaEl.checked = !!alarmCfg.maSwitch; chkMaEl.addEventListener('change', e => { alarmCfg.maSwitch = e.target.checked; saveAlarmCfg(); showToast('이평선 스위칭 알람 설정이 저장되었습니다.'); }); }
+        if (chkDriftEl) { chkDriftEl.checked = !!alarmCfg.driftExceed; chkDriftEl.addEventListener('change', e => { alarmCfg.driftExceed = e.target.checked; saveAlarmCfg(); showToast('괴리율 초과 알람 설정이 저장되었습니다.'); }); }
+        if (inpTimeUsEl) { inpTimeUsEl.value = alarmCfg.timeUs || '07:30'; inpTimeUsEl.addEventListener('change', e => { alarmCfg.timeUs = e.target.value; saveAlarmCfg(); showToast(`미국장 체크 시각이 [${alarmCfg.timeUs}]으로 저장되었습니다.`); }); }
+        if (inpTimeKrEl) { inpTimeKrEl.value = alarmCfg.timeKr || '15:10'; inpTimeKrEl.addEventListener('change', e => { alarmCfg.timeKr = e.target.value; saveAlarmCfg(); showToast(`한국장 체크 시각이 [${alarmCfg.timeKr}]으로 저장되었습니다.`); }); }
+        updateNotifPermBadge();
+
+        // 텔레그램 입력란 양방향 동기화 및 즉시 발송 버튼
+        const mobTgTok = document.getElementById('inputMobAlarmTgToken');
+        const mobTgChat = document.getElementById('inputMobAlarmTgChatId');
+        const mainTgTok = document.getElementById('inputTgBotToken');
+        const mainTgChat = document.getElementById('inputTgChatId');
+        if (mobTgTok && mainTgTok) {
+          mobTgTok.value = mainTgTok.value || '';
+          mobTgTok.addEventListener('input', () => { mainTgTok.value = mobTgTok.value; saveUserSettingsToStorage(); });
+          mainTgTok.addEventListener('input', () => { mobTgTok.value = mainTgTok.value; });
+        }
+        if (mobTgChat && mainTgChat) {
+          mobTgChat.value = mainTgChat.value || '';
+          mobTgChat.addEventListener('input', () => { mainTgChat.value = mobTgChat.value; saveUserSettingsToStorage(); });
+          mainTgChat.addEventListener('input', () => { mobTgChat.value = mainTgChat.value; });
+        }
+        const btnMobSendTg = document.getElementById('btnMobSendTelegramTestNow');
+        if (btnMobSendTg) {
+          btnMobSendTg.addEventListener('click', () => {
+            if (mobTgTok && mainTgTok) mainTgTok.value = mobTgTok.value.trim();
+            if (mobTgChat && mainTgChat) mainTgChat.value = mobTgChat.value.trim();
+            saveUserSettingsToStorage();
+            const sendBtn = document.getElementById('btnSendTelegramNow');
+            if (sendBtn) sendBtn.click();
+          });
+        }
+
+        // 알람 테스트 버튼 (안드로이드 ServiceWorker showNotification 지원)
+        document.getElementById('btnTestMobileNotification').addEventListener('click', async () => {
+          const ddayText = document.getElementById('alarmNextRebalDdayBadge')?.textContent || '월초 리밸런싱';
+          const title = '🔔 [ST Quant] 리밸런싱 & 이평선 타점 알림';
+          const body = `${ddayText} | 설정된 코어·알파 이평선 시그널 및 주문 수량을 확인하세요.`;
+          const sent = await triggerPwaNotification(title, body);
+          if (sent) {
+            showToast('📲 스마트폰 상단 알림창으로 테스트 알람이 발송되었습니다!');
+          } else {
+            showToast('⚠️ 브라우저/폰 설정에서 알림 권한을 [허용]으로 변경해 주세요.');
+          }
         });
+
+        // 설정된 시각(미국장/한국장) 도래 시 자동 알림 체크 타이머 (30초 주기)
+        setInterval(() => {
+          const now = new Date();
+          const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+          const todayStr = getLocalTodayIsoString();
+          const fireKey = `${todayStr}_${hhmm}`;
+          if (alarmCfg.lastFiredKey === fireKey) return;
+          if (hhmm === alarmCfg.timeUs || hhmm === alarmCfg.timeKr) {
+            alarmCfg.lastFiredKey = fireKey;
+            saveAlarmCfg();
+            const ddayText = document.getElementById('alarmNextRebalDdayBadge')?.textContent || '';
+            triggerPwaNotification('⏰ [ST Quant] 정기 점검 시각 알림', `${hhmm} 점검 | ${ddayText}`);
+          }
+        }, 30000);
 
         // 알람 탭에서 텔레그램 파이썬 코드 바로보기 연동
         document.getElementById('btnOpenTelegramGuideFromAlarm').addEventListener('click', () => {
