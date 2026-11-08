@@ -4418,9 +4418,18 @@
       const winMonths = activeRets.filter(r => r > 0).length;
       const winRate = nR > 0 ? winMonths / nR : 0;
 
+      const maxLevSharePct = levWeightSeries.length > 0 ? Math.max(...levWeightSeries) : 0;
+
       return {
+        execMode: 'strat1_ma_switch',
+        pingPongWinCount,
+        coreTrackers,
+        coreSwitchCount,
+        months: timelineMonths,
         timelineMonths,
+        valuesKrw: portfolioKrwValues,
         portfolioKrwValues,
+        investedKrw: totalInvestedSeries,
         totalInvestedSeries,
         drawdowns,
         monthlyReturnsKrw,
@@ -4429,10 +4438,10 @@
         levLSeries,
         levWeightSeries,
         levTradeEvents,
-        trancheSummary: null,
-        coreTrackers,
-        coreSwitchCount,
+        levSwitchCount,
+        maxLevSharePct,
         finalKrw,
+        totalInvested: currentInvestedKrw,
         totalInvestedKrw: currentInvestedKrw,
         netProfitKrw: finalKrw - currentInvestedKrw,
         cagr,
@@ -4445,9 +4454,9 @@
         sortino,
         winRate,
         rebalanceCount,
-        levSwitchCount,
-        pingPongWinCount,
-        cumulativeFxCostKrw
+        cumulativeFxCostKrw,
+        startFx: MARKET_DB.usdkrw[startIdx],
+        endFx: MARKET_DB.usdkrw[endIdx]
       };
     }
 
